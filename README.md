@@ -11,7 +11,7 @@ A CLI framework for running larger-than-RAM LLMs (like Llama 4 Scout) on consume
 This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar large models) on a MacBook with limited RAM by:
 
 1. **Memory-mapping** the model file instead of loading it entirely into RAM
-2. **Quantizing** the model to reduce its size (Q4_K_M = ~35GB instead of ~109GB)
+2. **Quantizing** the model to reduce its size (Q8_0 = ~58GB instead of ~109GB)
 3. **Paging** model layers in/out of RAM as needed during inference
 
 **Result**: Slower inference, but it *works* on hardware that couldn't otherwise run the model.
@@ -25,7 +25,7 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 | **macOS** | 12.0+ | 14.0+ (Sonoma) |
 | **Chip** | Apple M1 | Apple M2/M3 |
 | **RAM** | 16GB | 24GB+ |
-| **Disk** | 60GB free (SSD) | 100GB+ free (NVMe) |
+| **Disk** | 70GB free (SSD) | 120GB+ free (NVMe) |
 
 > **Warning:** HDD will be painfully slow. This technique relies on fast disk I/O for paging.
 
@@ -46,24 +46,28 @@ cd gguf-experiments
 make setup
 ```
 
-# 3. Download the model (~35GB, requires HuggingFace account)
-`make download`
+# 3. Download the model (~58GB, requires HuggingFace account)
+```bash
+make download
+```
 
 # 4. Configure for your system (edit RAM_LIMIT)
-```
+```bash
 cp config.env.example config.env
-nano config.env  # Set RAM_LIMIT=16G
+nano config.env  # Set, for example, RAM_LIMIT=16G
 ```
 
 # 5. Start chatting!
-`make chat`
+```bash
+make chat
+```
 
 ### What Each Step Does
 
 | Command | What it does | Time |
 |---------|--------------|------|
 | `make setup` | Installs llama.cpp via Homebrew, huggingface-cli via pip | ~2 min |
-| `make download` | Downloads Q4_K_M GGUF from HuggingFace | ~30 min (varies) |
+| `make download` | Downloads Q8_0 GGUF from HuggingFace | ~45 min (varies) |
 | `make chat` | Starts interactive chat session | First response: ~30-60 sec |
 
 ---
@@ -72,7 +76,7 @@ nano config.env  # Set RAM_LIMIT=16G
 
 ### The Problem
 
-You have 24GB of RAM. The Llama 4 Scout model needs ~35GB (quantized) or ~109GB (full precision). Traditional loading fails.
+You have 24GB of RAM. The Llama 4 Scout model needs ~58GB (Q8_0 quantized) or ~109GB (full precision). Traditional loading fails.
 
 ### The Solution
 
@@ -100,28 +104,28 @@ nano config.env
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| \`RAM_LIMIT\` | \`16G\` | Max RAM for model (set to ~2/3 of your total RAM) |
-| \`CONTEXT_SIZE\` | \`4096\` | Conversation memory in tokens (lower = faster) |
-| \`GPU_LAYERS\` | \`999\` | Layers on Metal GPU (0 for CPU-only) |
-| \`USE_MMAP\` | \`true\` | **Essential** - enables larger-than-RAM operation |
+| `RAM_LIMIT` | `16G` | Max RAM for model (set to ~2/3 of your total RAM) |
+| `CONTEXT_SIZE` | `4096` | Conversation memory in tokens (lower = faster) |
+| `GPU_LAYERS` | `999` | Layers on Metal GPU (0 for CPU-only) |
+| `USE_MMAP` | `true` | **Essential** - enables larger-than-RAM operation |
 
 ---
 
 ## Available Commands
 
-\`\`\`bash
-make help        # Show all available commands
-\`\`\`
+```bash
+make help # Show all available commands
+```
 
 ### Core Commands
 
 | Command | Description |
 |---------|-------------|
-| \`make setup\` | Install dependencies (llama.cpp, huggingface-cli) |
-| \`make download\` | Download the Llama 4 Scout GGUF model |
-| \`make chat\` | Start interactive chat session |
-| \`make serve\` | Start OpenAI-compatible API server |
-| \`make stop\` | Stop the API server |
+| `make setup` | Install dependencies (llama.cpp, huggingface-cli) |
+| `make download` | Download the Llama 4 Scout GGUF model |
+| `make chat` | Start interactive chat session |
+| `make serve` | Start OpenAI-compatible API server |
+| `make stop` | Stop the API server |
 
 ---
 
@@ -129,17 +133,17 @@ make help        # Show all available commands
 
 Start an OpenAI-compatible API server:
 
-\`\`\`bash
+```bash
 make serve
-\`\`\`
+```
 
 ### Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| \`/v1/chat/completions\` | POST | Chat completion |
-| \`/v1/completions\` | POST | Text completion |
-| \`/health\` | GET | Health check |
+| `/v1/chat/completions` | POST | Chat completion |
+| `/v1/completions` | POST | Text completion |
+| `/health` | GET | Health check |
 
 ---
 

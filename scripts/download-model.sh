@@ -2,12 +2,17 @@
 # =============================================================================
 # download-model.sh - Download GGUF models from HuggingFace Hub
 # =============================================================================
-# Downloads the Llama 4 Scout 17B-16E Instruct model in GGUF Q4_K_M format.
+# Downloads the Llama 4 Scout 17B-16E Instruct model in GGUF Q8_0 format.
 #
-# Why Q4_K_M?
-#   - 4-bit quantization with K-quant optimization
-#   - Good balance between quality and size
-#   - Smaller file = faster loading, more headroom for larger-than-RAM
+# Default: Q8_0 (8-bit quantization)
+#   - ~58GB file size
+#   - Near-lossless quality (virtually indistinguishable from FP16)
+#   - Good balance for larger-than-RAM inference
+#
+# Alternative versions can be configured in config.env:
+#   - f16:    ~109GB, full precision (largest, highest quality)
+#   - Q4_K_M: ~35GB, good quality/size balance
+#   - Q3_K_M: ~25GB, acceptable quality, smaller size
 #
 # Model Details:
 #   - Original: meta-llama/Llama-4-Scout-17B-16E-Instruct
@@ -53,9 +58,9 @@ fi
 
 # Default model settings (can be overridden in config.env)
 # Note: The actual GGUF repository will depend on community quantizations
-# Using a placeholder - users should update based on available GGUF repos
+# Using Q8_0 (8-bit) as default for near-lossless quality with reasonable size
 HF_REPO="${HF_REPO:-bartowski/Llama-4-Scout-17B-16E-Instruct-GGUF}"
-MODEL_FILE="${MODEL_FILE:-Llama-4-Scout-17B-16E-Instruct-Q4_K_M.gguf}"
+MODEL_FILE="${MODEL_FILE:-Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf}"
 
 echo ""
 echo "=========================================="
@@ -81,14 +86,17 @@ fi
 
 print_success "HuggingFace CLI available"
 
-# Check disk space (need at least 50GB free for Q4_K_M)
+# Check disk space (need at least 70GB free for Q8_0)
 AVAILABLE_SPACE_GB=$(df -g "$MODELS_DIR" | awk 'NR==2 {print $4}')
-REQUIRED_SPACE_GB=50
+REQUIRED_SPACE_GB=70
 
 if [[ "$AVAILABLE_SPACE_GB" -lt "$REQUIRED_SPACE_GB" ]]; then
     print_error "Insufficient disk space"
     echo "  Available: ${AVAILABLE_SPACE_GB}GB"
-    echo "  Required:  ~${REQUIRED_SPACE_GB}GB for Q4_K_M model"
+    echo "  Required:  ~${REQUIRED_SPACE_GB}GB for Q8_0 model"
+    echo ""
+    echo "  Tip: Use a smaller quantized version in config.env:"
+    echo "    MODEL_FILE=Llama-4-Scout-17B-16E-Instruct-Q4_K_M.gguf  (~35GB)"
     exit 1
 fi
 

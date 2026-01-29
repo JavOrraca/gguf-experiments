@@ -107,29 +107,30 @@ Quantization reduces the precision of model weights from high-precision floating
 |--------|-----------------|----------------|---------|
 | FP32   | 32 bits         | ~68 GB         | Baseline |
 | FP16   | 16 bits         | ~34 GB         | ~Same as FP32 |
-| Q8_0   | 8 bits          | ~17 GB         | Very Good |
+| **Q8_0**   | **8 bits**          | **~17 GB**         | **Very Good** |
 | Q6_K   | 6 bits          | ~13 GB         | Good |
 | Q5_K_M | 5 bits          | ~11 GB         | Good |
-| **Q4_K_M** | **4 bits**  | **~9 GB**      | **Acceptable** |
+| Q4_K_M | 4 bits  | ~9 GB      | Acceptable |
 | Q3_K   | 3 bits          | ~7 GB          | Noticeable loss |
 | Q2_K   | 2 bits          | ~5 GB          | Significant loss |
 
-### Why Q4_K_M?
+### Why Q8_0?
 
-We use **Q4_K_M** (4-bit with K-quant medium) because:
-- **4x smaller** than FP16 (fits on disk more easily)
-- **Reasonable quality** for most tasks
-- **K-quant** uses mixed precision for important layers
-- Good balance between size and capability
+We use **Q8_0** (8-bit quantization) because:
+- **Near-lossless quality** - virtually indistinguishable from FP16
+- **~50% smaller** than FP16 (~58GB vs ~109GB)
+- **Better accuracy** than 4-bit quantization for complex tasks
+- Good balance between quality and practical file size
 
 ### Analogy: JPEG Compression
 
 Quantization is like JPEG compression for images:
 - Original: 10MB uncompressed bitmap
-- JPEG 80%: 500KB, almost indistinguishable
-- JPEG 20%: 50KB, noticeable artifacts
+- JPEG 95%: 1MB, virtually identical (like Q8_0)
+- JPEG 70%: 300KB, minor artifacts (like Q4_K_M)
+- JPEG 30%: 50KB, noticeable artifacts (like Q2_K)
 
-Q4_K_M is like JPEG at 70-80%: smaller, still useful.
+Q8_0 is like JPEG at 95%: smaller file, nearly lossless quality.
 
 ---
 
@@ -264,13 +265,15 @@ RAM Contents:
 
 ### Realistic Expectations
 
-On a MacBook Air M2 with 24GB RAM, running Llama 4 Scout Q4_K_M:
+On a MacBook Air M2 with 24GB RAM, running Llama 4 Scout Q8_0 (~58GB):
 
 | Scenario | Expected Speed |
 |----------|----------------|
-| Short responses (< 100 tokens) | 5-15 tokens/second |
-| Long responses (> 500 tokens) | 2-5 tokens/second |
-| First response (cold start) | 30-60 seconds to start |
+| Short responses (< 100 tokens) | 2-5 tokens/second |
+| Long responses (> 500 tokens) | 0.5-2 tokens/second |
+| First response (cold start) | 60-120 seconds to start |
+
+**Note**: With only ~40% of the model fitting in RAM (12GB dedicated out of 58GB), expect heavy disk paging. Close other applications to maximize available memory for faster inference.
 
 ---
 

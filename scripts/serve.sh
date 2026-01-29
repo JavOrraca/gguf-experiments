@@ -52,7 +52,7 @@ print_error() {
 # Load configuration
 # -----------------------------------------------------------------------------
 # Defaults
-MODEL_PATH="$PROJECT_DIR/models/Llama-4-Scout-17B-16E-Instruct-Q4_K_M.gguf"
+MODEL_PATH="$PROJECT_DIR/models/Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf"
 CONTEXT_SIZE=4096
 THREADS="auto"
 BATCH_SIZE=512
