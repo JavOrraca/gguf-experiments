@@ -1,0 +1,44 @@
+# =============================================================================
+# GGUF Experiments - Git Ignore
+# =============================================================================
+
+# Models (large files, download with `make download`)
+models/
+*.gguf
+
+# Local configuration (contains user-specific settings)
+config.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
