@@ -2,21 +2,28 @@
 # =============================================================================
 # download-model.sh - Download GGUF models from HuggingFace Hub
 # =============================================================================
-# Downloads the Llama 4 Scout 17B-16E Instruct model in GGUF Q8_0 format.
+# Downloads the Llama 4 Scout 17B-16E Instruct model in GGUF format.
 #
-# Default: Q8_0 (8-bit quantization)
-#   - ~58GB file size
+# Supports both:
+#   - SHARDED models (split across multiple files in subdirectories)
+#   - SINGLE-FILE models (one .gguf file at root level)
+#
+# Default: Q8_0 (8-bit quantization, sharded)
+#   - ~58GB total file size (3 shards)
 #   - Near-lossless quality (virtually indistinguishable from FP16)
 #   - Good balance for larger-than-RAM inference
 #
-# Alternative versions can be configured in config.env:
-#   - f16:    ~109GB, full precision (largest, highest quality)
-#   - Q4_K_M: ~35GB, good quality/size balance
-#   - Q3_K_M: ~25GB, acceptable quality, smaller size
+# Alternative versions can be configured in config.env via MODEL_QUANT:
+#   - BF16:   ~109GB, bfloat16 precision (largest, highest quality)
+#   - Q6_K:   ~45GB, 6-bit (excellent quality)
+#   - Q5_K_M: ~40GB, 5-bit (very good quality)
+#   - Q4_K_M: ~35GB, 4-bit (good quality/size balance)
+#   - Q3_K_S: ~22GB, 3-bit single file (acceptable quality)
+#   - Q2_K:   ~18GB, 2-bit single file (smallest, lower quality)
 #
 # Model Details:
 #   - Original: meta-llama/Llama-4-Scout-17B-16E-Instruct
-#   - GGUF versions available from various community quantizers
+#   - GGUF versions: unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF
 # =============================================================================
 
 set -e
@@ -57,10 +64,24 @@ if [[ -f "$PROJECT_DIR/config.env" ]]; then
 fi
 
 # Default model settings (can be overridden in config.env)
-# Note: The actual GGUF repository will depend on community quantizations
-# Using Q8_0 (8-bit) as default for near-lossless quality with reasonable size
 HF_REPO="${HF_REPO:-unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF}"
-MODEL_FILE="${MODEL_FILE:-Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf}"
+MODEL_NAME="${MODEL_NAME:-Llama-4-Scout-17B-16E-Instruct}"
+MODEL_QUANT="${MODEL_QUANT:-Q8_0}"
+
+# Known single-file quantizations (at root level, not in subdirectories)
+# These don't follow the sharded pattern
+SINGLE_FILE_QUANTS=("Q2_K" "Q2_K_L" "Q3_K_S" "UD-IQ1_M" "UD-IQ1_S" "UD-IQ2_M" "UD-IQ2_XXS" "UD-IQ3_XXS" "UD-Q2_K_XL" "UD-Q3_K_XL" "UD-TQ1_0")
+
+# Check if MODEL_QUANT is a single-file quantization
+is_single_file_quant() {
+    local quant="$1"
+    for sf_quant in "${SINGLE_FILE_QUANTS[@]}"; do
+        if [[ "$quant" == "$sf_quant" ]]; then
+            return 0  # true
+        fi
+    done
+    return 1  # false
+}
 
 echo ""
 echo "=========================================="
@@ -92,20 +113,24 @@ HF_CLI="uv run huggingface-cli"
 print_success "HuggingFace CLI available"
 
 # Check disk space (need at least 70GB free for Q8_0)
-AVAILABLE_SPACE_GB=$(df -g "$MODELS_DIR" | awk 'NR==2 {print $4}')
+AVAILABLE_SPACE_GB=$(df -g "$PROJECT_DIR" 2>/dev/null | awk 'NR==2 {print $4}')
 REQUIRED_SPACE_GB=70
 
-if [[ "$AVAILABLE_SPACE_GB" -lt "$REQUIRED_SPACE_GB" ]]; then
-    print_error "Insufficient disk space"
-    echo "  Available: ${AVAILABLE_SPACE_GB}GB"
-    echo "  Required:  ~${REQUIRED_SPACE_GB}GB for Q8_0 model"
+if [[ -n "$AVAILABLE_SPACE_GB" ]] && [[ "$AVAILABLE_SPACE_GB" -lt "$REQUIRED_SPACE_GB" ]]; then
+    print_warning "Low disk space: ${AVAILABLE_SPACE_GB}GB available"
+    echo "  Recommended: ~${REQUIRED_SPACE_GB}GB for Q8_0 model"
     echo ""
     echo "  Tip: Use a smaller quantized version in config.env:"
-    echo "    MODEL_FILE=Llama-4-Scout-17B-16E-Instruct-Q4_K_M.gguf  (~35GB)"
-    exit 1
+    echo "    MODEL_QUANT=Q4_K_M  (~35GB)"
+    echo "    MODEL_QUANT=Q3_K_S  (~22GB, single file)"
+    echo ""
+    read -p "Continue anyway? (y/N): " CONTINUE
+    if [[ "$CONTINUE" != "y" && "$CONTINUE" != "Y" ]]; then
+        exit 1
+    fi
+else
+    print_success "Disk space OK (${AVAILABLE_SPACE_GB:-unknown}GB available)"
 fi
-
-print_success "Disk space OK (${AVAILABLE_SPACE_GB}GB available)"
 
 # Create models directory
 mkdir -p "$MODELS_DIR"
@@ -135,89 +160,176 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# Download model
+# Determine download type (sharded vs single file)
 # -----------------------------------------------------------------------------
 echo ""
-print_step "Downloading model..."
+print_step "Preparing download..."
+
+if is_single_file_quant "$MODEL_QUANT"; then
+    # Single file download
+    DOWNLOAD_TYPE="single"
+    MODEL_FILE="${MODEL_NAME}-${MODEL_QUANT}.gguf"
+    DOWNLOAD_PATTERN="$MODEL_FILE"
+    MODEL_PATH="$MODELS_DIR/$MODEL_FILE"
+    echo "  Type: Single file"
+else
+    # Sharded download (directory with multiple parts)
+    DOWNLOAD_TYPE="sharded"
+    DOWNLOAD_PATTERN="${MODEL_QUANT}/*.gguf"
+    # The first shard is what llama.cpp needs to load the model
+    MODEL_PATH="$MODELS_DIR/${MODEL_QUANT}/${MODEL_NAME}-${MODEL_QUANT}-00001-of-*.gguf"
+    echo "  Type: Sharded (multiple files)"
+fi
+
 echo "  Repository: $HF_REPO"
-echo "  File:       $MODEL_FILE"
+echo "  Quantization: $MODEL_QUANT"
+echo "  Pattern: $DOWNLOAD_PATTERN"
 echo "  Destination: $MODELS_DIR"
 echo ""
 
+# -----------------------------------------------------------------------------
 # Check if model already exists
-MODEL_PATH="$MODELS_DIR/$MODEL_FILE"
-if [[ -f "$MODEL_PATH" ]]; then
-    print_warning "Model file already exists: $MODEL_PATH"
-    read -p "Re-download? (y/N): " REDOWNLOAD
-    if [[ "$REDOWNLOAD" != "y" && "$REDOWNLOAD" != "Y" ]]; then
-        print_success "Using existing model file"
-        exit 0
+# -----------------------------------------------------------------------------
+if [[ "$DOWNLOAD_TYPE" == "single" ]]; then
+    if [[ -f "$MODEL_PATH" ]]; then
+        print_warning "Model file already exists: $MODEL_PATH"
+        read -p "Re-download? (y/N): " REDOWNLOAD
+        if [[ "$REDOWNLOAD" != "y" && "$REDOWNLOAD" != "Y" ]]; then
+            print_success "Using existing model file"
+            exit 0
+        fi
+    fi
+else
+    # Check for sharded model directory
+    SHARD_DIR="$MODELS_DIR/$MODEL_QUANT"
+    if [[ -d "$SHARD_DIR" ]] && [[ -n "$(ls -A "$SHARD_DIR"/*.gguf 2>/dev/null)" ]]; then
+        SHARD_COUNT=$(ls -1 "$SHARD_DIR"/*.gguf 2>/dev/null | wc -l | tr -d ' ')
+        print_warning "Sharded model directory exists: $SHARD_DIR ($SHARD_COUNT files)"
+        read -p "Re-download? (y/N): " REDOWNLOAD
+        if [[ "$REDOWNLOAD" != "y" && "$REDOWNLOAD" != "Y" ]]; then
+            print_success "Using existing model files"
+            # Find the first shard for MODEL_PATH
+            FIRST_SHARD=$(ls -1 "$SHARD_DIR"/*.gguf 2>/dev/null | sort | head -1)
+            if [[ -n "$FIRST_SHARD" ]]; then
+                MODEL_PATH="$FIRST_SHARD"
+            fi
+            exit 0
+        fi
     fi
 fi
 
-# Download using huggingface-cli
+# -----------------------------------------------------------------------------
+# Download model
+# -----------------------------------------------------------------------------
 print_step "Starting download (this may take a while for large models)..."
 echo ""
 
-# Attempt download with user-friendly error handling
-if ! $HF_CLI download "$HF_REPO" "$MODEL_FILE" \
-    --local-dir "$MODELS_DIR" \
-    --local-dir-use-symlinks False 2>&1; then
-    
+# Function to display helpful error message
+show_download_error() {
     echo ""
     print_error "Download failed!"
     echo ""
     echo "  ┌─────────────────────────────────────────────────────────────────┐"
-    echo "  │  ${YELLOW}Repository Not Found?${NC} The GGUF repo may not exist yet.       │"
+    echo "  │  ${YELLOW}File or Repository Not Found?${NC}                                  │"
     echo "  │                                                                 │"
     echo "  │  ${BLUE}To fix this, edit your config.env file:${NC}                       │"
     echo "  │                                                                 │"
     echo "  │    1. Open: ${GREEN}./config.env${NC}                                        │"
     echo "  │    2. Update ${GREEN}HF_REPO${NC} to a valid GGUF repository               │"
-    echo "  │    3. Update ${GREEN}MODEL_FILE${NC} to match an available file            │"
+    echo "  │    3. Update ${GREEN}MODEL_QUANT${NC} to an available quantization         │"
     echo "  │    4. Re-run: ${GREEN}make download${NC}                                    │"
     echo "  │                                                                 │"
-    echo "  │  ${BLUE}How to find a valid repository:${NC}                                │"
-    echo "  │    • Search: https://huggingface.co/models?search=llama-4+gguf │"
-    echo "  │    • Check the 'Files' tab for available .gguf files           │"
-    echo "  │                                                                 │"
-    echo "  │  ${BLUE}Popular GGUF quantizers to check:${NC}                              │"
-    echo "  │    • https://huggingface.co/unsloth                            │"
-    echo "  │    • https://huggingface.co/lmstudio-community                 │"
-    echo "  │    • https://huggingface.co/bartowski                          │"
+    echo "  │  ${BLUE}How to find valid options:${NC}                                     │"
+    echo "  │    • Visit: https://huggingface.co/${HF_REPO}/tree/main        │"
+    echo "  │    • Look for folders (Q8_0, Q4_K_M) = sharded models          │"
+    echo "  │    • Look for .gguf files at root = single-file models         │"
     echo "  │                                                                 │"
     echo "  │  ${BLUE}Current config:${NC}                                                │"
-    echo "  │    HF_REPO:    $HF_REPO"
-    echo "  │    MODEL_FILE: $MODEL_FILE"
+    echo "  │    HF_REPO:     $HF_REPO"
+    echo "  │    MODEL_QUANT: $MODEL_QUANT"
+    echo "  │    MODEL_NAME:  $MODEL_NAME"
     echo "  │                                                                 │"
     echo "  │  ${YELLOW}See docs/TROUBLESHOOTING.md for more help${NC}                     │"
     echo "  └─────────────────────────────────────────────────────────────────┘"
     echo ""
-    exit 1
+}
+
+# Attempt download based on type
+if [[ "$DOWNLOAD_TYPE" == "single" ]]; then
+    # Single file download
+    if ! $HF_CLI download "$HF_REPO" "$MODEL_FILE" \
+        --local-dir "$MODELS_DIR" \
+        --local-dir-use-symlinks False 2>&1; then
+        show_download_error
+        exit 1
+    fi
+else
+    # Sharded download - download all files matching the pattern in the quantization folder
+    if ! $HF_CLI download "$HF_REPO" \
+        --include "${MODEL_QUANT}/*" \
+        --local-dir "$MODELS_DIR" \
+        --local-dir-use-symlinks False 2>&1; then
+        show_download_error
+        exit 1
+    fi
 fi
 
-# Verify download
-if [[ -f "$MODEL_PATH" ]]; then
-    FILE_SIZE=$(du -h "$MODEL_PATH" | cut -f1)
-    print_success "Download complete!"
-    echo ""
-    echo "  File: $MODEL_PATH"
-    echo "  Size: $FILE_SIZE"
-else
-    # Check if file ended up in a subdirectory (HF CLI behavior)
-    FOUND_MODEL=$(find "$MODELS_DIR" -name "$MODEL_FILE" -type f 2>/dev/null | head -1)
-    if [[ -n "$FOUND_MODEL" ]]; then
+# -----------------------------------------------------------------------------
+# Verify download and find model path
+# -----------------------------------------------------------------------------
+print_step "Verifying download..."
+
+if [[ "$DOWNLOAD_TYPE" == "single" ]]; then
+    # Single file verification
+    if [[ -f "$MODELS_DIR/$MODEL_FILE" ]]; then
+        MODEL_PATH="$MODELS_DIR/$MODEL_FILE"
+        FILE_SIZE=$(du -h "$MODEL_PATH" | cut -f1)
         print_success "Download complete!"
         echo ""
-        echo "  File: $FOUND_MODEL"
+        echo "  File: $MODEL_PATH"
+        echo "  Size: $FILE_SIZE"
+    else
+        # Check if file ended up in a subdirectory
+        FOUND_MODEL=$(find "$MODELS_DIR" -name "$MODEL_FILE" -type f 2>/dev/null | head -1)
+        if [[ -n "$FOUND_MODEL" ]]; then
+            MODEL_PATH="$FOUND_MODEL"
+            FILE_SIZE=$(du -h "$MODEL_PATH" | cut -f1)
+            print_success "Download complete!"
+            echo ""
+            echo "  File: $MODEL_PATH"
+            echo "  Size: $FILE_SIZE"
+        else
+            print_error "Download may have failed - model file not found"
+            exit 1
+        fi
+    fi
+else
+    # Sharded verification
+    SHARD_DIR="$MODELS_DIR/$MODEL_QUANT"
+    if [[ -d "$SHARD_DIR" ]]; then
+        SHARD_FILES=$(ls -1 "$SHARD_DIR"/*.gguf 2>/dev/null | sort)
+        SHARD_COUNT=$(echo "$SHARD_FILES" | wc -l | tr -d ' ')
         
-        # Move to expected location if in subdirectory
-        if [[ "$FOUND_MODEL" != "$MODEL_PATH" ]]; then
-            mv "$FOUND_MODEL" "$MODEL_PATH"
-            print_success "Moved to: $MODEL_PATH"
+        if [[ "$SHARD_COUNT" -gt 0 ]]; then
+            FIRST_SHARD=$(echo "$SHARD_FILES" | head -1)
+            MODEL_PATH="$FIRST_SHARD"
+            TOTAL_SIZE=$(du -sh "$SHARD_DIR" | cut -f1)
+            
+            print_success "Download complete!"
+            echo ""
+            echo "  Directory: $SHARD_DIR"
+            echo "  Shards: $SHARD_COUNT files"
+            echo "  Total size: $TOTAL_SIZE"
+            echo "  First shard: $(basename "$FIRST_SHARD")"
+            echo ""
+            echo "  ${BLUE}Note:${NC} llama.cpp will automatically load all shards when you"
+            echo "  point it to the first shard file."
+        else
+            print_error "Download may have failed - no shard files found in $SHARD_DIR"
+            exit 1
         fi
     else
-        print_error "Download may have failed - model file not found"
+        print_error "Download may have failed - shard directory not found: $SHARD_DIR"
         exit 1
     fi
 fi
@@ -243,6 +355,8 @@ echo ""
 echo "=========================================="
 echo "  Download Complete!"
 echo "=========================================="
+echo ""
+echo "Model ready at: $MODEL_PATH"
 echo ""
 echo "Next steps:"
 echo "  1. Start chatting:  make chat"

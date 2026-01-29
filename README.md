@@ -52,18 +52,21 @@ Install `llama.cpp` and `huggingface-cli`.
 make setup
 ```
 
-### 3. Download the model
-For this project, the Llama 4 Scout default format is the `Q8_0` model, approximately 58GB, and requires a HuggingFace account. You can change the version of the model in `config.env`.
+### 3. Configure for your system
+A prepopulated configuration setup can be found in `config.env.example`. Copy it to create your config:
+```bash
+cp config.env.example config.env
+nano config.env  # Optionally adjust settings like RAM_LIMIT
+```
+
+### 4. Download the model
+For this project, the default is the **Q8_0** quantization (~58GB, sharded into 3 files) from [unsloth's GGUF repository](https://huggingface.co/unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF). You can change the quantization level in `config.env` via `MODEL_QUANT`.
+
 ```bash
 make download
 ```
 
-### 4. Configure for your system
-A prepopulated configuration setup can be found in `config.env.example`. The code below will copy the example config file to the root directory as `config.env` so this code can run. 
-```bash
-cp config.env.example config.env
-nano config.env  # Set, for example, RAM_LIMIT=16G
-```
+> **Note**: Requires a HuggingFace account. If you get a "Repository Not Found" error, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ### 5. Start chatting!
 ```bash
@@ -112,6 +115,7 @@ nano config.env
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| `MODEL_QUANT` | `Q8_0` | Quantization level (Q8_0, Q6_K, Q4_K_M, Q3_K_S, etc.) |
 | `RAM_LIMIT` | `16G` | Max RAM for model (set to ~2/3 of your total RAM) |
 | `CONTEXT_SIZE` | `4096` | Conversation memory in tokens (lower = faster) |
 | `GPU_LAYERS` | `999` | Layers on Metal GPU (0 for CPU-only) |

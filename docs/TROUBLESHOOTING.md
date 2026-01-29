@@ -82,14 +82,18 @@ pip install huggingface_hub
 huggingface-cli login
 ```
 
-### "Repository not found" (404 Error)
+### "Repository not found" or "Entry not found" (404 Error)
 
-**Problem**: The configured HuggingFace GGUF repository doesn't exist, or the model file name is incorrect. This is common with newer models like Llama 4 Scout where community GGUF quantizations may not be available yet or use different naming conventions.
+**Problem**: The configured HuggingFace GGUF repository doesn't exist, or the quantization/file doesn't exist. This is common with newer models like Llama 4 Scout where community GGUF quantizations may use different naming conventions.
 
-**Error example**:
+**Error examples**:
 ```
 huggingface_hub.errors.RepositoryNotFoundError: 404 Client Error.
-Repository Not Found for url: https://huggingface.co/bartowski/Llama-4-Scout-17B-16E-Instruct-GGUF/...
+Repository Not Found for url: https://huggingface.co/...
+```
+```
+huggingface_hub.errors.EntryNotFoundError: 404 Client Error.
+Entry Not Found for url: https://huggingface.co/.../Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf
 ```
 
 **Solution**:
@@ -102,20 +106,21 @@ Repository Not Found for url: https://huggingface.co/bartowski/Llama-4-Scout-17B
      - [bartowski](https://huggingface.co/bartowski) - Prolific GGUF quantizer
      - [TheBloke](https://huggingface.co/TheBloke) - Large collection of quantizations
 
-2. **Update your `config.env` file**:
+2. **Check available quantizations** in the repository:
+   - Visit: `https://huggingface.co/<HF_REPO>/tree/main`
+   - **Folders** (like `Q8_0/`, `Q4_K_M/`) contain **sharded models** (split into multiple files)
+   - **Single .gguf files** at root are smaller quantizations in one file
+
+3. **Update your `config.env` file**:
 ```bash
 # Open config.env in your editor
 nano ./config.env
 
-# Update these two settings:
-HF_REPO=<valid-repository-name>      # e.g., unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF
-MODEL_FILE=<valid-file-name>.gguf    # e.g., Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf
+# Update these settings:
+HF_REPO=unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF   # Repository name
+MODEL_QUANT=Q8_0                                       # Quantization level (folder or file prefix)
+MODEL_NAME=Llama-4-Scout-17B-16E-Instruct             # Model name prefix
 ```
-
-3. **Verify the repository and file exist**:
-   - Visit: `https://huggingface.co/<HF_REPO>`
-   - Click the "Files and versions" tab
-   - Confirm your `MODEL_FILE` is listed
 
 4. **Re-run the download**:
 ```bash
@@ -126,6 +131,28 @@ make download
 
 **Official Model Reference**: The official Llama 4 Scout model (safetensors format, not GGUF) is at:
 https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct
+
+### Understanding Sharded vs Single-File Models
+
+**Sharded models** are large quantizations split across multiple files for easier downloading:
+```
+Q8_0/
+  Llama-4-Scout-17B-16E-Instruct-Q8_0-00001-of-00003.gguf
+  Llama-4-Scout-17B-16E-Instruct-Q8_0-00002-of-00003.gguf
+  Llama-4-Scout-17B-16E-Instruct-Q8_0-00003-of-00003.gguf
+```
+
+**Single-file models** are smaller quantizations in one file:
+```
+Llama-4-Scout-17B-16E-Instruct-Q3_K_S.gguf
+Llama-4-Scout-17B-16E-Instruct-Q2_K.gguf
+```
+
+The download script automatically detects which type you're downloading based on `MODEL_QUANT`:
+- **Sharded**: `Q8_0`, `Q6_K`, `Q5_K_M`, `Q4_K_M`, `BF16`, etc.
+- **Single-file**: `Q3_K_S`, `Q2_K`, `Q2_K_L`, etc.
+
+For sharded models, llama.cpp only needs the path to the **first shard** (`-00001-of-XXXXX.gguf`), and it will automatically load all parts.
 
 ### Download stuck or very slow
 
