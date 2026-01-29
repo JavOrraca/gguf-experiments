@@ -39,35 +39,33 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 
 ## Quick Start
 
-### For the Impatient (5 commands)
-
-# 1. Clone the repository
+### 1. Clone the repository
 ```bash
 git clone https://github.com/JavOrraca/gguf-experiments.git
 cd gguf-experiments
 ```
 
-# 2. Install dependencies
+### 2. Install dependencies
 
 Install `llama.cpp` and `huggingface-cli`.
 ```bash
 make setup
 ```
 
-# 3. Download the model
+### 3. Download the model
 For this project, the Llama 4 Scout default format is the `Q8_0` model, approximately 58GB, and requires a HuggingFace account. You can change the version of the model in `config.env`.
 ```bash
 make download
 ```
 
-# 4. Configure for your system
+### 4. Configure for your system
 A prepopulated configuration setup can be found in `config.env.example`. The code below will copy the example config file to the root directory as `config.env` so this code can run. 
 ```bash
 cp config.env.example config.env
 nano config.env  # Set, for example, RAM_LIMIT=16G
 ```
 
-# 5. Start chatting!
+### 5. Start chatting!
 ```bash
 make chat
 ```
