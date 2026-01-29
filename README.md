@@ -35,32 +35,36 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 
 ### For the Impatient (5 commands)
 
-\`\`\`bash
 # 1. Clone the repository
+```bash
 git clone https://github.com/JavOrraca/gguf-experiments.git
 cd gguf-experiments
+```
 
 # 2. Install dependencies (llama.cpp, huggingface-cli)
+```bash
 make setup
+```
 
 # 3. Download the model (~35GB, requires HuggingFace account)
-make download
+`make download`
 
 # 4. Configure for your system (edit RAM_LIMIT)
+```
 cp config.env.example config.env
-nano config.env  # Set RAM_LIMIT=16G for 24GB system
+nano config.env  # Set RAM_LIMIT=16G
+```
 
 # 5. Start chatting!
-make chat
-\`\`\`
+`make chat`
 
 ### What Each Step Does
 
 | Command | What it does | Time |
 |---------|--------------|------|
-| \`make setup\` | Installs llama.cpp via Homebrew, huggingface-cli via pip | ~2 min |
-| \`make download\` | Downloads Q4_K_M GGUF from HuggingFace | ~30 min (varies) |
-| \`make chat\` | Starts interactive chat session | First response: ~30-60 sec |
+| `make setup` | Installs llama.cpp via Homebrew, huggingface-cli via pip | ~2 min |
+| `make download` | Downloads Q4_K_M GGUF from HuggingFace | ~30 min (varies) |
+| `make chat` | Starts interactive chat session | First response: ~30-60 sec |
 
 ---
 
@@ -85,12 +89,12 @@ The OS manages loading and unloading model layers automatically. You get slower 
 
 ## Configuration
 
-Edit \`config.env\` to customize for your system:
+Edit `config.env` to customize for your system:
 
-\`\`\`bash
+```bash
 cp config.env.example config.env
 nano config.env
-\`\`\`
+```
 
 ### Key Settings
 
