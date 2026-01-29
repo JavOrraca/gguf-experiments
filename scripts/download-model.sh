@@ -73,16 +73,21 @@ echo ""
 # -----------------------------------------------------------------------------
 print_step "Checking prerequisites..."
 
-# Check for huggingface-cli
-if command -v huggingface-cli &> /dev/null; then
-    HF_CLI="huggingface-cli"
-elif python3 -m huggingface_hub version &> /dev/null; then
-    HF_CLI="python3 -m huggingface_hub.commands.huggingface_cli"
-else
-    print_error "huggingface-cli not found"
+# Check for uv and huggingface-cli
+if ! command -v uv &> /dev/null; then
+    print_error "uv not found"
     echo "  Run 'make setup' first to install dependencies"
     exit 1
 fi
+
+# Verify huggingface-cli is available via uv
+if ! uv run huggingface-cli --help &> /dev/null; then
+    print_error "huggingface-cli not found in uv environment"
+    echo "  Run 'make setup' first to install dependencies"
+    exit 1
+fi
+
+HF_CLI="uv run huggingface-cli"
 
 print_success "HuggingFace CLI available"
 

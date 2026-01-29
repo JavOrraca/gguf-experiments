@@ -1,0 +1,45 @@
+# =============================================================================
+# GGUF Experiments - Python Project Configuration
+# =============================================================================
+# This project uses uv for fast, reproducible Python dependency management.
+#
+# Quick Start:
+#   uv sync          - Install all dependencies
+#   uv run <cmd>     - Run a command in the project environment
+#
+# Learn more about uv: https://docs.astral.sh/uv/
+# =============================================================================
+
+[project]
+name = "gguf-experiments"
+version = "1.0.0"
+description = "CLI framework for running larger-than-RAM LLMs on macOS using memory-mapped inference"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13"
+authors = [
+    { name = "Javier Orraca" }
+]
+keywords = ["llm", "gguf", "llama", "inference", "macos", "memory-mapping"]
+
+dependencies = [
+    "huggingface-hub>=1.0",      # For downloading models from HuggingFace Hub
+    "transformers>=5.0.0",        # Hugging Face Transformers (v5+ for hub 1.0 support)
+    "tokenizers>=0.21",           # Fast tokenizers (compatible with hub 1.0+)
+]
+
+[project.urls]
+Homepage = "https://github.com/JavOrraca/gguf-experiments"
+Repository = "https://github.com/JavOrraca/gguf-experiments"
+Issues = "https://github.com/JavOrraca/gguf-experiments/issues"
+
+# =============================================================================
+# uv Configuration
+# =============================================================================
+
+[tool.uv]
+# Use uv-managed Python installations
+python-preference = "managed"
+
+# Don't try to install the project itself (we just need the dependencies)
+package = false

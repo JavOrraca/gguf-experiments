@@ -23,9 +23,15 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
 | **macOS** | 12.0+ | 14.0+ (Sonoma) |
-| **Chip** | Apple M1 | Apple M2/M3 |
+| **Chip** | Apple M1 | Apple M2/M3/M4 |
 | **RAM** | 16GB | 24GB+ |
 | **Disk** | 70GB free (SSD) | 120GB+ free (NVMe) |
+
+**Automatically installed by `make setup`:**
+- [Homebrew](https://brew.sh) - Package manager for macOS
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) - Inference engine for GGUF models
+- [uv](https://docs.astral.sh/uv/) - Fast Python package manager
+- Python 3.13 with `huggingface-hub`, `transformers`, and `tokenizers`
 
 > **Warning:** HDD will be painfully slow. This technique relies on fast disk I/O for paging.
 
@@ -70,7 +76,7 @@ make chat
 
 | Command | What it does | Time |
 |---------|--------------|------|
-| `make setup` | Installs llama.cpp via Homebrew, huggingface-cli via pip | ~2 min |
+| `make setup` | Installs llama.cpp via Homebrew, Python 3.13 + dependencies via uv | ~2 min |
 | `make download` | Downloads Q8_0 GGUF from HuggingFace | ~45 min (varies) |
 | `make chat` | Starts interactive chat session | First response: ~30-60 sec |
 
@@ -125,7 +131,7 @@ make help # Show all available commands
 
 | Command | Description |
 |---------|-------------|
-| `make setup` | Install dependencies (llama.cpp, huggingface-cli) |
+| `make setup` | Install dependencies (llama.cpp, uv, Python 3.13, huggingface-cli) |
 | `make download` | Download the Llama 4 Scout GGUF model |
 | `make chat` | Start interactive chat session |
 | `make serve` | Start OpenAI-compatible API server |

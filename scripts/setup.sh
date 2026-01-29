@@ -5,7 +5,11 @@
 # This script installs:
 #   1. Homebrew (if not present)
 #   2. llama.cpp - The inference engine for GGUF models
-#   3. huggingface-cli - For downloading models from HuggingFace Hub
+#   3. uv - Fast Python package manager
+#   4. Python 3.13 + huggingface-cli (via uv)
+#
+# Uses uv for fast, reproducible Python dependency management.
+# Learn more: https://docs.astral.sh/uv/
 # =============================================================================
 
 set -e  # Exit on any error
@@ -98,44 +102,82 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# Install Python and huggingface-cli
+# Install uv (Fast Python Package Manager)
 # -----------------------------------------------------------------------------
-print_step "Setting up Python environment for HuggingFace CLI..."
+print_step "Setting up uv (Python package manager)..."
 
-# Check for Python
-if ! command -v python3 &> /dev/null; then
-    print_warning "Python 3 not found. Installing via Homebrew..."
-    brew install python@3.11
+if ! command -v uv &> /dev/null; then
+    print_step "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    
+    # Add uv to PATH for current session
+    export PATH="$HOME/.local/bin:$PATH"
+    
+    if command -v uv &> /dev/null; then
+        print_success "uv installed successfully"
+    else
+        print_error "uv installation failed"
+        print_warning "Try running: curl -LsSf https://astral.sh/uv/install.sh | sh"
+        print_warning "Then restart your terminal"
+        exit 1
+    fi
+else
+    print_success "uv is already installed"
+    # Check for updates
+    UV_VERSION=$(uv --version 2>&1 | head -1)
+    print_success "uv version: $UV_VERSION"
 fi
 
-PYTHON_VERSION=$(python3 --version)
-print_success "Python available: $PYTHON_VERSION"
+# -----------------------------------------------------------------------------
+# Setup Python environment with uv
+# -----------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Install/upgrade pip
-print_step "Ensuring pip is up to date..."
-python3 -m pip install --upgrade pip --quiet
+print_step "Setting up Python 3.13 environment..."
 
-# Install huggingface_hub CLI
-print_step "Installing HuggingFace Hub CLI..."
-python3 -m pip install --upgrade huggingface_hub --quiet
+cd "$PROJECT_DIR"
 
-if command -v huggingface-cli &> /dev/null; then
+# Sync dependencies (this creates venv and installs all deps from pyproject.toml)
+print_step "Installing Python dependencies..."
+uv sync
+
+# Verify installation
+if uv run python --version &> /dev/null; then
+    PYTHON_VERSION=$(uv run python --version)
+    print_success "Python available: $PYTHON_VERSION"
+else
+    print_error "Python installation failed"
+    exit 1
+fi
+
+# Verify huggingface-cli
+if uv run huggingface-cli --help &> /dev/null; then
     print_success "huggingface-cli installed successfully"
 else
-    # Try with python -m
-    if python3 -m huggingface_hub.commands.huggingface_cli --help &> /dev/null; then
-        print_success "huggingface-cli available via python3 -m"
-        print_warning "You may need to add Python scripts to PATH"
-    else
-        print_error "huggingface-cli installation may have failed"
-    fi
+    print_error "huggingface-cli installation failed"
+    exit 1
+fi
+
+# Verify transformers
+if uv run python -c "import transformers; print(f'transformers {transformers.__version__}')" &> /dev/null; then
+    TRANSFORMERS_VERSION=$(uv run python -c "import transformers; print(transformers.__version__)")
+    print_success "transformers installed: v$TRANSFORMERS_VERSION"
+else
+    print_warning "transformers import check failed (may still work)"
+fi
+
+# Verify tokenizers
+if uv run python -c "import tokenizers; print(f'tokenizers {tokenizers.__version__}')" &> /dev/null; then
+    TOKENIZERS_VERSION=$(uv run python -c "import tokenizers; print(tokenizers.__version__)")
+    print_success "tokenizers installed: v$TOKENIZERS_VERSION"
+else
+    print_warning "tokenizers import check failed (may still work)"
 fi
 
 # -----------------------------------------------------------------------------
 # Create models directory
 # -----------------------------------------------------------------------------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 MODELS_DIR="$PROJECT_DIR/models"
 
 print_step "Creating models directory..."
@@ -163,6 +205,11 @@ echo "  Setup Complete!"
 echo "=========================================="
 echo ""
 print_success "All dependencies installed"
+echo ""
+echo "Installed components:"
+echo "  • llama.cpp (via Homebrew)"
+echo "  • Python 3.13 (via uv)"
+echo "  • huggingface-hub, transformers, tokenizers (via uv)"
 echo ""
 echo "Next steps:"
 echo "  1. Download a model:  make download"

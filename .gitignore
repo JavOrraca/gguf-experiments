@@ -22,7 +22,7 @@ config.env
 *~
 .*.sw?
 
-# Python
+# Python / uv
 __pycache__/
 *.py[cod]
 *$py.class
@@ -33,6 +33,10 @@ __pycache__/
 .venv/
 venv/
 ENV/
+
+# uv (Python package manager)
+# Note: uv.lock is tracked for reproducibility
+.uv_cache/
 
 # Logs
 *.log
