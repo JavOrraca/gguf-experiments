@@ -82,17 +82,50 @@ pip install huggingface_hub
 huggingface-cli login
 ```
 
-### "Repository not found"
+### "Repository not found" (404 Error)
 
-**Problem**: The GGUF repository name may have changed.
+**Problem**: The configured HuggingFace GGUF repository doesn't exist, or the model file name is incorrect. This is common with newer models like Llama 4 Scout where community GGUF quantizations may not be available yet or use different naming conventions.
+
+**Error example**:
+```
+huggingface_hub.errors.RepositoryNotFoundError: 404 Client Error.
+Repository Not Found for url: https://huggingface.co/bartowski/Llama-4-Scout-17B-16E-Instruct-GGUF/...
+```
 
 **Solution**:
-1. Search for the model on HuggingFace: https://huggingface.co/models?search=llama-4-scout+gguf
-2. Update `config.env` with the correct repository:
+
+1. **Find a valid GGUF repository** on HuggingFace:
+   - Search: https://huggingface.co/models?search=llama-4-scout+gguf
+   - Or browse popular quantizers:
+     - [unsloth](https://huggingface.co/unsloth) - Often first with new model quantizations
+     - [lmstudio-community](https://huggingface.co/lmstudio-community) - LM Studio's official GGUF repo
+     - [bartowski](https://huggingface.co/bartowski) - Prolific GGUF quantizer
+     - [TheBloke](https://huggingface.co/TheBloke) - Large collection of quantizations
+
+2. **Update your `config.env` file**:
 ```bash
-HF_REPO=<correct-repo-name>
-MODEL_FILE=<correct-file-name>.gguf
+# Open config.env in your editor
+nano ./config.env
+
+# Update these two settings:
+HF_REPO=<valid-repository-name>      # e.g., unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF
+MODEL_FILE=<valid-file-name>.gguf    # e.g., Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf
 ```
+
+3. **Verify the repository and file exist**:
+   - Visit: `https://huggingface.co/<HF_REPO>`
+   - Click the "Files and versions" tab
+   - Confirm your `MODEL_FILE` is listed
+
+4. **Re-run the download**:
+```bash
+make download
+```
+
+**Tip**: Check `config.env.example` for detailed instructions on finding and configuring GGUF repositories.
+
+**Official Model Reference**: The official Llama 4 Scout model (safetensors format, not GGUF) is at:
+https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct
 
 ### Download stuck or very slow
 

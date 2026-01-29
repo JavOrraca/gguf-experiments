@@ -59,7 +59,7 @@ fi
 # Default model settings (can be overridden in config.env)
 # Note: The actual GGUF repository will depend on community quantizations
 # Using Q8_0 (8-bit) as default for near-lossless quality with reasonable size
-HF_REPO="${HF_REPO:-bartowski/Llama-4-Scout-17B-16E-Instruct-GGUF}"
+HF_REPO="${HF_REPO:-unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF}"
 MODEL_FILE="${MODEL_FILE:-Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf}"
 
 echo ""
@@ -159,9 +159,42 @@ fi
 print_step "Starting download (this may take a while for large models)..."
 echo ""
 
-$HF_CLI download "$HF_REPO" "$MODEL_FILE" \
+# Attempt download with user-friendly error handling
+if ! $HF_CLI download "$HF_REPO" "$MODEL_FILE" \
     --local-dir "$MODELS_DIR" \
-    --local-dir-use-symlinks False
+    --local-dir-use-symlinks False 2>&1; then
+    
+    echo ""
+    print_error "Download failed!"
+    echo ""
+    echo "  ┌─────────────────────────────────────────────────────────────────┐"
+    echo "  │  ${YELLOW}Repository Not Found?${NC} The GGUF repo may not exist yet.       │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}To fix this, edit your config.env file:${NC}                       │"
+    echo "  │                                                                 │"
+    echo "  │    1. Open: ${GREEN}./config.env${NC}                                        │"
+    echo "  │    2. Update ${GREEN}HF_REPO${NC} to a valid GGUF repository               │"
+    echo "  │    3. Update ${GREEN}MODEL_FILE${NC} to match an available file            │"
+    echo "  │    4. Re-run: ${GREEN}make download${NC}                                    │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}How to find a valid repository:${NC}                                │"
+    echo "  │    • Search: https://huggingface.co/models?search=llama-4+gguf │"
+    echo "  │    • Check the 'Files' tab for available .gguf files           │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}Popular GGUF quantizers to check:${NC}                              │"
+    echo "  │    • https://huggingface.co/unsloth                            │"
+    echo "  │    • https://huggingface.co/lmstudio-community                 │"
+    echo "  │    • https://huggingface.co/bartowski                          │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}Current config:${NC}                                                │"
+    echo "  │    HF_REPO:    $HF_REPO"
+    echo "  │    MODEL_FILE: $MODEL_FILE"
+    echo "  │                                                                 │"
+    echo "  │  ${YELLOW}See docs/TROUBLESHOOTING.md for more help${NC}                     │"
+    echo "  └─────────────────────────────────────────────────────────────────┘"
+    echo ""
+    exit 1
+fi
 
 # Verify download
 if [[ -f "$MODEL_PATH" ]]; then
