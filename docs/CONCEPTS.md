@@ -101,24 +101,23 @@ When generating tokens:
 
 Quantization reduces the precision of model weights from high-precision floating-point numbers (FP16, FP32) to lower-precision integers (INT8, INT4).
 
-### Size Comparison
+### Size Comparison (Llama 4 Scout 17B-16E)
 
-| Format | Bits per Weight | 17B Model Size | Quality |
-|--------|-----------------|----------------|---------|
-| FP32   | 32 bits         | ~68 GB         | Baseline |
-| FP16   | 16 bits         | ~34 GB         | ~Same as FP32 |
-| **Q8_0**   | **8 bits**          | **~17 GB**         | **Very Good** |
-| Q6_K   | 6 bits          | ~13 GB         | Good |
-| Q5_K_M | 5 bits          | ~11 GB         | Good |
-| Q4_K_M | 4 bits  | ~9 GB      | Acceptable |
-| Q3_K   | 3 bits          | ~7 GB          | Noticeable loss |
-| Q2_K   | 2 bits          | ~5 GB          | Significant loss |
+| Format | Bits per Weight | Model Size | Quality |
+|--------|-----------------|------------|---------|
+| BF16   | 16 bits         | 216 GB     | Baseline (highest quality) |
+| **Q8_0**   | **8 bits**  | **115 GB** | **Near-lossless** |
+| Q6_K   | 6 bits          | 88.4 GB    | Excellent |
+| Q5_K_M | 5 bits          | 76.5 GB    | Very Good |
+| Q4_K_M | 4 bits          | 65.4 GB    | Good |
+| Q3_K_M | 3 bits          | 51.8 GB    | Acceptable |
+| Q2_K   | 2 bits          | 39.6 GB    | Lower quality |
 
 ### Why Q8_0?
 
 We use **Q8_0** (8-bit quantization) because:
-- **Near-lossless quality** - virtually indistinguishable from FP16
-- **~50% smaller** than FP16 (~58GB vs ~109GB)
+- **Near-lossless quality** - virtually indistinguishable from BF16
+- **~47% smaller** than BF16 (115 GB vs 216 GB)
 - **Better accuracy** than 4-bit quantization for complex tasks
 - Good balance between quality and practical file size
 
@@ -265,7 +264,7 @@ RAM Contents:
 
 ### Realistic Expectations
 
-On a MacBook Air M2 with 24GB RAM, running Llama 4 Scout Q8_0 (~58GB):
+On a MacBook Air M2 with 24GB RAM, running Llama 4 Scout Q8_0 (115 GB):
 
 | Scenario | Expected Speed |
 |----------|----------------|
@@ -273,7 +272,7 @@ On a MacBook Air M2 with 24GB RAM, running Llama 4 Scout Q8_0 (~58GB):
 | Long responses (> 500 tokens) | 0.5-2 tokens/second |
 | First response (cold start) | 60-120 seconds to start |
 
-**Note**: With only ~40% of the model fitting in RAM (12GB dedicated out of 58GB), expect heavy disk paging. Close other applications to maximize available memory for faster inference.
+**Note**: With only ~10% of the model fitting in RAM (12GB dedicated out of 115 GB), expect heavy disk paging. Close other applications to maximize available memory for faster inference.
 
 ---
 

@@ -118,7 +118,7 @@ nano ./config.env
 
 # Update these settings:
 HF_REPO=unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF   # Repository name
-MODEL_QUANT=Q8_0                                       # Quantization level (folder or file prefix)
+MODEL_QUANT=Q8_0                                      # Quantization level (folder or file prefix)
 MODEL_NAME=Llama-4-Scout-17B-16E-Instruct             # Model name prefix
 ```
 
@@ -179,7 +179,7 @@ wget -c "https://huggingface.co/<repo>/resolve/main/<file>.gguf"
 # Check available space
 df -h .
 
-# You need at least 50GB free for Q4_K_M
+# You need at least 70GB free for Q4_K_M (65.4 GB)
 # Options:
 # 1. Free up disk space
 # 2. Use smaller quantization (Q3_K_S instead of Q4_K_M)

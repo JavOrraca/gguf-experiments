@@ -11,7 +11,7 @@ A CLI framework for running larger-than-RAM LLMs (like Llama 4 Scout) on consume
 This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar large models) on a MacBook with limited RAM by:
 
 1. **Memory-mapping** the model file instead of loading it entirely into RAM
-2. **Quantizing** the model to reduce its size (Q8_0 = ~58GB instead of ~109GB)
+2. **Quantizing** the model to reduce its size (Q8_0 = 115GB instead of 216GB BF16)
 3. **Paging** model layers in/out of RAM as needed during inference
 
 **Result**: Slower inference, but it *works* on hardware that couldn't otherwise run the model.
@@ -60,7 +60,7 @@ nano config.env  # Optionally adjust settings like RAM_LIMIT
 ```
 
 ### 4. Download the model
-For this project, the default is the **Q8_0** quantization (~58GB, sharded into 3 files) from [unsloth's GGUF repository](https://huggingface.co/unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF). You can change the quantization level in `config.env` via `MODEL_QUANT`.
+For this project, the default is the **Q8_0** quantization (115 GB, sharded into 3 files) from [unsloth's GGUF repository](https://huggingface.co/unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF). You can change the quantization level in `config.env` via `MODEL_QUANT`.
 
 ```bash
 make download
@@ -87,7 +87,7 @@ make chat
 
 ### The Problem
 
-You have 24GB of RAM. The Llama 4 Scout model needs ~58GB (Q8_0 quantized) or ~109GB (full precision). Traditional loading fails.
+You have 24GB of RAM. The Llama 4 Scout model needs 115 GB (Q8_0 quantized) or 216 GB (BF16 full precision). Traditional loading fails.
 
 ### The Solution
 
@@ -116,7 +116,7 @@ nano config.env
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `MODEL_QUANT` | `Q8_0` | Quantization level (Q8_0, Q6_K, Q4_K_M, Q3_K_S, etc.) |
-| `RAM_LIMIT` | `16G` | Max RAM for model (set to ~2/3 of your total RAM) |
+| `RAM_LIMIT` | `12G` | Max RAM for model (set to ~50% of your total RAM) |
 | `CONTEXT_SIZE` | `4096` | Conversation memory in tokens (lower = faster) |
 | `GPU_LAYERS` | `999` | Layers on Metal GPU (0 for CPU-only) |
 | `USE_MMAP` | `true` | **Essential** - enables larger-than-RAM operation |
