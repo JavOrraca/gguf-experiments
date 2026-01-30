@@ -93,6 +93,43 @@ When generating tokens:
 3. If RAM is full, the OS evicts older pages to make room
 4. Inference continues with a slight disk I/O delay
 
+### The mmap + mlock Relationship
+
+Two settings control how the model interacts with RAM:
+
+| Setting | Config | What it does |
+|---------|--------|--------------|
+| `--mmap` | `USE_MMAP=true` | Memory-map the model file (load pages on-demand) |
+| `--mlock` | `USE_MLOCK=true` | Lock memory pages in RAM (prevent swapping) |
+
+**For larger-than-RAM inference, you need:**
+- `USE_MMAP=true` - So the OS can load model pages on-demand
+- `USE_MLOCK=false` - So the OS can evict pages when RAM is full
+
+```
+USE_MMAP=true + USE_MLOCK=false (larger-than-RAM)
+┌─────────────────┐              ┌─────────────────┐
+│  RAM (24GB)     │              │  Model (115GB)  │
+│  ┌───────────┐  │   page in    │  ┌───────────┐  │
+│  │ Active    │◄─┼──────────────┼──│ Layer 1-5 │  │
+│  │ Layers    │  │              │  │ Layer 6-10│  │
+│  │           │──┼──────────────┼─▶│ ...       │  │
+│  └───────────┘  │   page out   │  └───────────┘  │
+└─────────────────┘              └─────────────────┘
+
+USE_MLOCK=true (model must fit in RAM!)
+┌─────────────────┐              ┌─────────────────┐
+│  RAM (24GB)     │              │  Model (20GB)   │
+│  ┌───────────┐  │   load all   │  ┌───────────┐  │
+│  │ LOCKED    │◄─┼══════════════┼══│ All layers│  │
+│  │ IN RAM    │  │   (no swap)  │  └───────────┘  │
+│  │           │  │              │                 │
+│  └───────────┘  │              │  ✓ Fits!        │
+└─────────────────┘              └─────────────────┘
+```
+
+**Why would anyone use mlock?** If your model fits entirely in RAM, `USE_MLOCK=true` prevents the OS from swapping model pages to disk, ensuring consistent fast performance. But for larger-than-RAM models, it would fail immediately.
+
 ---
 
 ## Quantization

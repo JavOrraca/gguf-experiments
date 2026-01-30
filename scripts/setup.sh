@@ -6,7 +6,7 @@
 #   1. Homebrew (if not present)
 #   2. llama.cpp - The inference engine for GGUF models
 #   3. uv - Fast Python package manager
-#   4. Python 3.13 + huggingface-cli (via uv)
+#   4. Python 3.13 + hf CLI (via uv)
 #
 # Uses uv for fast, reproducible Python dependency management.
 # Learn more: https://docs.astral.sh/uv/

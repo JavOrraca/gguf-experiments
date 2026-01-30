@@ -78,8 +78,9 @@ pip install huggingface_hub
 # 1. Create account at https://huggingface.co
 # 2. Accept license at https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct
 # 3. Create token at https://huggingface.co/settings/tokens
-# 4. Login
-huggingface-cli login
+# 4. Login (use 'hf' or legacy 'huggingface-cli')
+hf auth login
+# Or legacy: huggingface-cli login
 ```
 
 ### "Repository not found" or "Entry not found" (404 Error)
@@ -195,11 +196,10 @@ DOWNLOAD_RETRY_DELAY=30
 
 **Solution**:
 ```bash
-# Use resume-capable download
-huggingface-cli download bartowski/Llama-4-Scout-17B-16E-Instruct-GGUF \
+# Use resume-capable download (hf CLI preferred, huggingface-cli also works)
+hf download bartowski/Llama-4-Scout-17B-16E-Instruct-GGUF \
   Llama-4-Scout-17B-16E-Instruct-Q4_K_M.gguf \
-  --local-dir ./models \
-  --resume-download
+  --local-dir ./models
 
 # Or try wget with resume
 wget -c "https://huggingface.co/<repo>/resolve/main/<file>.gguf"

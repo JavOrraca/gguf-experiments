@@ -25,6 +25,33 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# -----------------------------------------------------------------------------
+# Helper function to convert RAM_LIMIT to MiB for --cache-ram
+# Supports: 12G, 12g, 8192M, 8192m, 8192 (plain number = MiB)
+# -----------------------------------------------------------------------------
+convert_ram_to_mib() {
+    local ram_value="$1"
+    local num unit
+
+    # Extract number and unit
+    if [[ "$ram_value" =~ ^([0-9]+)([GgMm]?)$ ]]; then
+        num="${BASH_REMATCH[1]}"
+        unit="${BASH_REMATCH[2]}"
+
+        case "$unit" in
+            G|g)
+                echo $(( num * 1024 ))
+                ;;
+            M|m|"")
+                echo "$num"
+                ;;
+        esac
+    else
+        # Invalid format, return empty
+        echo ""
+    fi
+}
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -59,6 +86,7 @@ BATCH_SIZE=512
 GPU_LAYERS=999
 USE_MMAP=true
 USE_MLOCK=false
+RAM_LIMIT="12G"
 SERVER_HOST="127.0.0.1"
 SERVER_PORT=8080
 SERVER_VERBOSE=false
@@ -192,15 +220,22 @@ if [[ "$USE_MMAP" == "true" ]]; then
 fi
 
 # Memory locking (disable for larger-than-RAM)
+# Only add --mlock if explicitly enabled; omitting it means no memory locking
 if [[ "$USE_MLOCK" == "true" ]]; then
     CMD+=(--mlock)
-else
-    CMD+=(--no-mmap-lock)
 fi
 
-# Flash attention
+# RAM limit for KV cache (convert to MiB for --cache-ram)
+if [[ -n "$RAM_LIMIT" ]]; then
+    RAM_LIMIT_MIB=$(convert_ram_to_mib "$RAM_LIMIT")
+    if [[ -n "$RAM_LIMIT_MIB" ]]; then
+        CMD+=(--cache-ram "$RAM_LIMIT_MIB")
+    fi
+fi
+
+# Flash attention (requires value: on, off, or auto)
 if [[ "$FLASH_ATTENTION" == "true" ]]; then
-    CMD+=(--flash-attn)
+    CMD+=(--flash-attn on)
 fi
 
 # Verbose logging
@@ -222,6 +257,7 @@ echo ""
 echo "Model:       $(basename "$MODEL_PATH")"
 echo "Context:     $CONTEXT_SIZE tokens"
 echo "GPU Layers:  $GPU_LAYERS"
+echo "RAM Limit:   $RAM_LIMIT (cache)"
 echo "Memory Map:  $USE_MMAP"
 echo ""
 echo "Server URL:  http://$SERVER_HOST:$SERVER_PORT"

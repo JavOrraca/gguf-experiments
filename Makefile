@@ -37,7 +37,7 @@ help: ## Show this help message
 	@echo "$(BLUE)GGUF Experiments - Larger-than-RAM LLM Inference$(NC)"
 	@echo ""
 	@echo "$(GREEN)Quick Start:$(NC)"
-	@echo "  make setup      Install dependencies (llama.cpp, huggingface-cli)"
+	@echo "  make setup      Install dependencies (llama.cpp, hf CLI)"
 	@echo "  make download   Download the Llama 4 Scout GGUF model"
 	@echo "  make chat       Start interactive chat session"
 	@echo ""
@@ -52,7 +52,7 @@ help: ## Show this help message
 # SETUP & INSTALLATION
 # =============================================================================
 
-setup: ## Install all dependencies (llama.cpp, huggingface-cli)
+setup: ## Install all dependencies (llama.cpp, hf CLI)
 	@chmod +x $(SCRIPTS_DIR)/*.sh
 	@$(SCRIPTS_DIR)/setup.sh
 

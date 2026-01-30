@@ -31,7 +31,7 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 - [Homebrew](https://brew.sh) - Package manager for macOS
 - [llama.cpp](https://github.com/ggerganov/llama.cpp) - Inference engine for GGUF models
 - [uv](https://docs.astral.sh/uv/) - Fast Python package manager
-- Python 3.13 with `huggingface-hub`, `transformers`, `tokenizers`, and `hf_transfer`
+- Python 3.13 with `huggingface-hub` (includes `hf` CLI), `transformers`, `tokenizers`, and `hf_transfer`
 
 > **Warning:** HDD will be painfully slow. This technique relies on fast disk I/O for paging.
 
@@ -47,7 +47,7 @@ cd gguf-experiments
 
 ### 2. Install dependencies
 
-Install `llama.cpp` and `huggingface-cli`.
+Install `llama.cpp` and the HuggingFace CLI (`hf`).
 ```bash
 make setup
 ```
@@ -119,9 +119,21 @@ nano config.env
 | `RAM_LIMIT` | `12G` | Max RAM for model (set to ~50% of your total RAM) |
 | `CONTEXT_SIZE` | `4096` | Conversation memory in tokens (lower = faster) |
 | `GPU_LAYERS` | `999` | Layers on Metal GPU (0 for CPU-only) |
-| `USE_MMAP` | `true` | **Essential** - enables larger-than-RAM operation |
+| `USE_MMAP` | `true` | **Essential** - memory-maps model for larger-than-RAM operation |
+| `USE_MLOCK` | `false` | **Keep false** - allows OS to swap model pages (see below) |
 | `DOWNLOAD_TIMEOUT` | `3600` | Download timeout in seconds (60 min default) |
 | `DOWNLOAD_MAX_RETRIES` | `5` | Retry attempts for failed downloads |
+
+### Understanding USE_MMAP and USE_MLOCK
+
+These two settings work together to enable larger-than-RAM inference:
+
+| Setting | What it does | For larger-than-RAM |
+|---------|--------------|---------------------|
+| `USE_MMAP=true` | Memory-maps the model file so the OS loads pages on-demand | **Required** |
+| `USE_MLOCK=false` | Allows OS to swap unused model pages out of RAM | **Required** |
+
+If you set `USE_MLOCK=true`, the system tries to lock the entire model in RAM, which will **fail** if the model exceeds your available memory. Keep it `false` for larger-than-RAM operation.
 
 ---
 
@@ -135,7 +147,7 @@ make help # Show all available commands
 
 | Command | Description |
 |---------|-------------|
-| `make setup` | Install dependencies (llama.cpp, uv, Python 3.13, huggingface-cli) |
+| `make setup` | Install dependencies (llama.cpp, uv, Python 3.13, `hf` CLI) |
 | `make download` | Download the Llama 4 Scout GGUF model |
 | `make chat` | Start interactive chat session |
 | `make serve` | Start OpenAI-compatible API server |
