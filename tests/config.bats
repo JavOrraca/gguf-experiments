@@ -59,8 +59,8 @@ teardown() {
     [ "$status" -eq 0 ]
 }
 
-@test "config.env.example contains HF_HUB_ENABLE_HF_TRANSFER" {
-    run grep -q "HF_HUB_ENABLE_HF_TRANSFER" "$PROJECT_ROOT/config.env.example"
+@test "config.env.example mentions hf_transfer (auto-detected)" {
+    run grep -q "hf_transfer" "$PROJECT_ROOT/config.env.example"
     [ "$status" -eq 0 ]
 }
 

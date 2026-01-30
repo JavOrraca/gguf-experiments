@@ -83,9 +83,11 @@ if uv run python -c "import hf_transfer" 2>/dev/null; then
     HF_TRANSFER_AVAILABLE=1
 fi
 
-# Only enable hf_transfer if it's actually installed (avoids hard failure)
+# Clear any existing HF_HUB_ENABLE_HF_TRANSFER (e.g., from config.env)
+# and only enable if hf_transfer is actually installed (avoids hard failure)
+unset HF_HUB_ENABLE_HF_TRANSFER
 if [[ "$HF_TRANSFER_AVAILABLE" -eq 1 ]]; then
-    export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+    export HF_HUB_ENABLE_HF_TRANSFER=1
 else
     export HF_HUB_ENABLE_HF_TRANSFER=0
 fi
@@ -124,13 +126,15 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # Verify huggingface-cli is available via uv
-if ! uv run huggingface-cli --help &> /dev/null; then
+# Use python -m to ensure we use the venv's huggingface_hub, not any system-installed one
+if ! uv run python -m huggingface_hub.commands.huggingface_cli --help &> /dev/null; then
     print_error "huggingface-cli not found in uv environment"
     echo "  Run 'make setup' first to install dependencies"
     exit 1
 fi
 
-HF_CLI="uv run huggingface-cli"
+# Use python -m to ensure we use the venv's module, not system huggingface-cli
+HF_CLI="uv run python -m huggingface_hub.commands.huggingface_cli"
 
 print_success "HuggingFace CLI available"
 
