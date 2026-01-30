@@ -126,15 +126,15 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # Verify huggingface-cli is available via uv
-# Use python -m to ensure we use the venv's huggingface_hub, not any system-installed one
-if ! uv run python -m huggingface_hub.commands.huggingface_cli --help &> /dev/null; then
+# uv run automatically uses the project's venv, so this will use the venv's entry point
+if ! uv run huggingface-cli --help &> /dev/null; then
     print_error "huggingface-cli not found in uv environment"
     echo "  Run 'make setup' first to install dependencies"
     exit 1
 fi
 
-# Use python -m to ensure we use the venv's module, not system huggingface-cli
-HF_CLI="uv run python -m huggingface_hub.commands.huggingface_cli"
+# Use uv run to ensure we use the venv's huggingface-cli entry point
+HF_CLI="uv run huggingface-cli"
 
 print_success "HuggingFace CLI available"
 
