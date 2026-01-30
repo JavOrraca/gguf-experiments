@@ -220,5 +220,5 @@ echo ""
 # Check available RAM
 TOTAL_RAM_GB=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
 print_warning "Your system has ${TOTAL_RAM_GB}GB RAM"
-echo "  Edit config.env to set RAM_LIMIT (recommended: $(( TOTAL_RAM_GB * 2 / 3 ))G)"
+echo "  Edit config.env to set RAM_LIMIT (recommended: $(( TOTAL_RAM_GB * 1 / 2 ))G)"
 echo ""
