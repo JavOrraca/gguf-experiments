@@ -12,7 +12,7 @@
 # Type 'make help' for all available commands
 # =============================================================================
 
-.PHONY: help setup download chat query serve stop clean info test
+.PHONY: help setup download chat query serve stop clean info test test-inference
 
 # Default target
 .DEFAULT_GOAL := help
@@ -116,7 +116,19 @@ info: ## Show system information and model status
 	fi
 	@echo ""
 
-test: ## Test inference with a simple prompt
+test: ## Run unit tests (requires bats-core: brew install bats-core)
+	@if command -v bats &> /dev/null; then \
+		echo "Running unit tests..."; \
+		bats tests/*.bats; \
+	else \
+		echo "$(YELLOW)bats-core not installed$(NC)"; \
+		echo "Install with: brew install bats-core"; \
+		echo ""; \
+		echo "Running basic validation instead..."; \
+		$(SCRIPTS_DIR)/setup.sh --version 2>/dev/null || echo "Scripts present"; \
+	fi
+
+test-inference: ## Test inference with a simple prompt
 	@echo "Testing inference..."
 	@$(SCRIPTS_DIR)/query.sh "Say hello in exactly 5 words."
 

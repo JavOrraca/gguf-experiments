@@ -26,6 +26,7 @@ dependencies = [
     "huggingface-hub>=1.0",      # For downloading models from HuggingFace Hub
     "transformers>=5.0.0",        # Hugging Face Transformers (v5+ for hub 1.0 support)
     "tokenizers>=0.21",           # Fast tokenizers (compatible with hub 1.0+)
+    "hf_transfer>=0.1.8",         # Rust-based fast parallel downloads (10x faster)
 ]
 
 [project.urls]

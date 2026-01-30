@@ -68,6 +68,18 @@ HF_REPO="${HF_REPO:-unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF}"
 MODEL_NAME="${MODEL_NAME:-Llama-4-Scout-17B-16E-Instruct}"
 MODEL_QUANT="${MODEL_QUANT:-Q8_0}"
 
+# Download settings (can be overridden in config.env)
+DOWNLOAD_TIMEOUT="${DOWNLOAD_TIMEOUT:-3600}"     # Timeout in seconds (60 min default)
+DOWNLOAD_MAX_RETRIES="${DOWNLOAD_MAX_RETRIES:-5}" # Max retry attempts
+DOWNLOAD_RETRY_DELAY="${DOWNLOAD_RETRY_DELAY:-10}" # Initial retry delay in seconds
+
+# Configure HuggingFace Hub timeouts (in seconds)
+export HF_HUB_DOWNLOAD_TIMEOUT="$DOWNLOAD_TIMEOUT"
+export HF_HUB_ETAG_TIMEOUT="$DOWNLOAD_TIMEOUT"
+
+# Enable hf_transfer if available (faster Rust-based downloads)
+export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+
 # Known single-file quantizations (at root level, not in subdirectories)
 # These don't follow the sharded pattern
 SINGLE_FILE_QUANTS=("Q2_K" "Q2_K_L" "Q3_K_S" "UD-IQ1_M" "UD-IQ1_S" "UD-IQ2_M" "UD-IQ2_XXS" "UD-IQ3_XXS" "UD-Q2_K_XL" "UD-Q3_K_XL" "UD-TQ1_0")
@@ -224,12 +236,55 @@ fi
 print_step "Starting download (this may take a while for large models)..."
 echo ""
 
+# Function to run download with retry logic
+run_with_retry() {
+    local cmd="$1"
+    local max_retries="$DOWNLOAD_MAX_RETRIES"
+    local retry_delay="$DOWNLOAD_RETRY_DELAY"
+    local attempt=1
+
+    while [[ $attempt -le $max_retries ]]; do
+        echo ""
+        if [[ $attempt -gt 1 ]]; then
+            print_warning "Attempt $attempt of $max_retries (waiting ${retry_delay}s before retry)..."
+            sleep "$retry_delay"
+            # Exponential backoff: double the delay for next attempt (max 5 min)
+            retry_delay=$((retry_delay * 2))
+            if [[ $retry_delay -gt 300 ]]; then
+                retry_delay=300
+            fi
+        fi
+
+        # Run the download command
+        if eval "$cmd"; then
+            return 0  # Success
+        fi
+
+        print_warning "Download attempt $attempt failed"
+        attempt=$((attempt + 1))
+    done
+
+    return 1  # All retries exhausted
+}
+
 # Function to display helpful error message
 show_download_error() {
     echo ""
-    print_error "Download failed!"
+    print_error "Download failed after $DOWNLOAD_MAX_RETRIES attempts!"
     echo ""
     echo "  ┌─────────────────────────────────────────────────────────────────┐"
+    echo "  │  ${YELLOW}Timeout or Connection Issues?${NC}                                  │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}Try these fixes in config.env:${NC}                                 │"
+    echo "  │    DOWNLOAD_TIMEOUT=7200      # Increase to 2 hours            │"
+    echo "  │    DOWNLOAD_MAX_RETRIES=10    # More retry attempts            │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}For faster downloads, install hf_transfer:${NC}                     │"
+    echo "  │    uv add hf_transfer                                          │"
+    echo "  │                                                                 │"
+    echo "  │  ${BLUE}Re-running the download will resume where it left off.${NC}         │"
+    echo "  │                                                                 │"
+    echo "  ├─────────────────────────────────────────────────────────────────┤"
     echo "  │  ${YELLOW}File or Repository Not Found?${NC}                                  │"
     echo "  │                                                                 │"
     echo "  │  ${BLUE}To fix this, edit your config.env file:${NC}                       │"
@@ -254,21 +309,26 @@ show_download_error() {
     echo ""
 }
 
-# Attempt download based on type
+# Show download settings
+echo ""
+echo "  ${BLUE}Download settings:${NC}"
+echo "    Timeout: ${DOWNLOAD_TIMEOUT}s per request"
+echo "    Max retries: ${DOWNLOAD_MAX_RETRIES}"
+echo "    hf_transfer: $(command -v hf_transfer &>/dev/null && echo 'enabled' || echo 'not installed (optional)')"
+echo ""
+
+# Attempt download based on type with retry logic
 if [[ "$DOWNLOAD_TYPE" == "single" ]]; then
     # Single file download
-    if ! $HF_CLI download "$HF_REPO" "$MODEL_FILE" \
-        --local-dir "$MODELS_DIR" \
-        --local-dir-use-symlinks False 2>&1; then
+    DOWNLOAD_CMD="$HF_CLI download \"$HF_REPO\" \"$MODEL_FILE\" --local-dir \"$MODELS_DIR\" --local-dir-use-symlinks False"
+    if ! run_with_retry "$DOWNLOAD_CMD"; then
         show_download_error
         exit 1
     fi
 else
     # Sharded download - download all files matching the pattern in the quantization folder
-    if ! $HF_CLI download "$HF_REPO" \
-        --include "${MODEL_QUANT}/*" \
-        --local-dir "$MODELS_DIR" \
-        --local-dir-use-symlinks False 2>&1; then
+    DOWNLOAD_CMD="$HF_CLI download \"$HF_REPO\" --include \"${MODEL_QUANT}/*\" --local-dir \"$MODELS_DIR\" --local-dir-use-symlinks False"
+    if ! run_with_retry "$DOWNLOAD_CMD"; then
         show_download_error
         exit 1
     fi

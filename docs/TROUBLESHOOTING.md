@@ -154,6 +154,41 @@ The download script automatically detects which type you're downloading based on
 
 For sharded models, llama.cpp only needs the path to the **first shard** (`-00001-of-XXXXX.gguf`), and it will automatically load all parts.
 
+### Download timeouts or "Read timed out" errors
+
+**Problem**: Connection timeouts when downloading large files (50GB+), especially on slower or unstable connections. You may see errors like:
+```
+HTTPSConnectionPool(host='cas-bridge.xethub.hf.co', port=443): Read timed out.
+requests.exceptions.ChunkedEncodingError: Connection broken
+```
+
+**Solution**:
+
+1. **The download script automatically retries** with exponential backoff. Simply re-run `make download` to resume where it left off.
+
+2. **Increase timeout and retries** in `config.env`:
+```bash
+# Increase timeout to 2 hours per request
+DOWNLOAD_TIMEOUT=7200
+
+# Allow more retry attempts
+DOWNLOAD_MAX_RETRIES=10
+
+# Start with longer delay between retries
+DOWNLOAD_RETRY_DELAY=30
+```
+
+3. **Use hf_transfer for faster, more reliable downloads** (already included):
+```bash
+# hf_transfer is enabled by default and provides 5-10x faster downloads
+# using Rust-based parallel transfers
+
+# To verify it's working, check the download output for faster speeds
+# Typical: 50-200 MB/s with hf_transfer vs 5-20 MB/s without
+```
+
+4. **If downloads keep failing**, try downloading during off-peak hours or from a more stable network connection.
+
 ### Download stuck or very slow
 
 **Problem**: Large file download issues.

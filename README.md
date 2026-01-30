@@ -31,7 +31,7 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 - [Homebrew](https://brew.sh) - Package manager for macOS
 - [llama.cpp](https://github.com/ggerganov/llama.cpp) - Inference engine for GGUF models
 - [uv](https://docs.astral.sh/uv/) - Fast Python package manager
-- Python 3.13 with `huggingface-hub`, `transformers`, and `tokenizers`
+- Python 3.13 with `huggingface-hub`, `transformers`, `tokenizers`, and `hf_transfer`
 
 > **Warning:** HDD will be painfully slow. This technique relies on fast disk I/O for paging.
 
@@ -120,6 +120,8 @@ nano config.env
 | `CONTEXT_SIZE` | `4096` | Conversation memory in tokens (lower = faster) |
 | `GPU_LAYERS` | `999` | Layers on Metal GPU (0 for CPU-only) |
 | `USE_MMAP` | `true` | **Essential** - enables larger-than-RAM operation |
+| `DOWNLOAD_TIMEOUT` | `3600` | Download timeout in seconds (60 min default) |
+| `DOWNLOAD_MAX_RETRIES` | `5` | Retry attempts for failed downloads |
 
 ---
 
@@ -138,6 +140,7 @@ make help # Show all available commands
 | `make chat` | Start interactive chat session |
 | `make serve` | Start OpenAI-compatible API server |
 | `make stop` | Stop the API server |
+| `make test` | Run unit tests (requires bats-core) |
 
 ---
 
