@@ -77,8 +77,18 @@ DOWNLOAD_RETRY_DELAY="${DOWNLOAD_RETRY_DELAY:-10}" # Initial retry delay in seco
 export HF_HUB_DOWNLOAD_TIMEOUT="$DOWNLOAD_TIMEOUT"
 export HF_HUB_ETAG_TIMEOUT="$DOWNLOAD_TIMEOUT"
 
-# Enable hf_transfer if available (faster Rust-based downloads)
-export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+# Check if hf_transfer is available in the uv environment
+HF_TRANSFER_AVAILABLE=0
+if uv run python -c "import hf_transfer" 2>/dev/null; then
+    HF_TRANSFER_AVAILABLE=1
+fi
+
+# Only enable hf_transfer if it's actually installed (avoids hard failure)
+if [[ "$HF_TRANSFER_AVAILABLE" -eq 1 ]]; then
+    export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+else
+    export HF_HUB_ENABLE_HF_TRANSFER=0
+fi
 
 # Known single-file quantizations (at root level, not in subdirectories)
 # These don't follow the sharded pattern
@@ -314,7 +324,11 @@ echo ""
 echo "  ${BLUE}Download settings:${NC}"
 echo "    Timeout: ${DOWNLOAD_TIMEOUT}s per request"
 echo "    Max retries: ${DOWNLOAD_MAX_RETRIES}"
-echo "    hf_transfer: $(command -v hf_transfer &>/dev/null && echo 'enabled' || echo 'not installed (optional)')"
+if [[ "$HF_TRANSFER_AVAILABLE" -eq 1 ]]; then
+    echo "    hf_transfer: enabled (faster downloads)"
+else
+    echo "    hf_transfer: not available (using standard download)"
+fi
 echo ""
 
 # Attempt download based on type with retry logic
