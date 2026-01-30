@@ -77,9 +77,11 @@ DOWNLOAD_RETRY_DELAY="${DOWNLOAD_RETRY_DELAY:-10}" # Initial retry delay in seco
 export HF_HUB_DOWNLOAD_TIMEOUT="$DOWNLOAD_TIMEOUT"
 export HF_HUB_ETAG_TIMEOUT="$DOWNLOAD_TIMEOUT"
 
-# Check if hf_transfer is available in the uv environment
+# Check if hf_transfer is available in the project's venv
+# Use the venv's Python directly to avoid PATH issues with system Python
+VENV_PYTHON="$PROJECT_DIR/.venv/bin/python"
 HF_TRANSFER_AVAILABLE=0
-if uv run python -c "import hf_transfer" 2>/dev/null; then
+if [[ -x "$VENV_PYTHON" ]] && "$VENV_PYTHON" -c "import hf_transfer" 2>/dev/null; then
     HF_TRANSFER_AVAILABLE=1
 fi
 
@@ -125,18 +127,42 @@ if ! command -v uv &> /dev/null; then
     exit 1
 fi
 
-# Verify huggingface-cli is available via uv
-# uv run automatically uses the project's venv, so this will use the venv's entry point
-if ! uv run huggingface-cli --help &> /dev/null; then
-    print_error "huggingface-cli not found in uv environment"
-    echo "  Run 'make setup' first to install dependencies"
-    exit 1
+# Verify HuggingFace CLI is available in the project's venv
+# Note: In huggingface_hub v0.24+, the CLI is 'hf' instead of 'huggingface-cli'
+# We use the explicit path to avoid picking up any system-installed CLI
+VENV_HF_CLI="$PROJECT_DIR/.venv/bin/hf"
+if [[ ! -x "$VENV_HF_CLI" ]]; then
+    # Fall back to huggingface-cli for older versions
+    VENV_HF_CLI="$PROJECT_DIR/.venv/bin/huggingface-cli"
+    if [[ ! -x "$VENV_HF_CLI" ]]; then
+        print_error "HuggingFace CLI not found in project venv"
+        echo "  Expected: $PROJECT_DIR/.venv/bin/hf or $PROJECT_DIR/.venv/bin/huggingface-cli"
+        echo "  Run 'make setup' first to install dependencies"
+        exit 1
+    fi
 fi
 
-# Use uv run to ensure we use the venv's huggingface-cli entry point
-HF_CLI="uv run huggingface-cli"
+# Use the venv's HuggingFace CLI directly to avoid PATH conflicts with system Python
+HF_CLI="$VENV_HF_CLI"
 
-print_success "HuggingFace CLI available"
+# Detect CLI version: 'hf' uses subcommands (hf auth whoami), 'huggingface-cli' uses direct commands
+HF_CLI_NAME=$(basename "$HF_CLI")
+if [[ "$HF_CLI_NAME" == "hf" ]]; then
+    # New CLI (huggingface_hub v0.24+)
+    HF_AUTH_WHOAMI="$HF_CLI auth whoami"
+    HF_AUTH_LOGIN="$HF_CLI auth login"
+    # New CLI doesn't need --local-dir-use-symlinks
+    HF_DOWNLOAD_OPTS="--local-dir"
+else
+    # Legacy CLI
+    HF_AUTH_WHOAMI="$HF_CLI whoami"
+    HF_AUTH_LOGIN="$HF_CLI login"
+    # Legacy CLI uses --local-dir-use-symlinks False
+    HF_DOWNLOAD_OPTS="--local-dir"
+    HF_DOWNLOAD_SYMLINKS_OPT="--local-dir-use-symlinks False"
+fi
+
+print_success "HuggingFace CLI available ($HF_CLI_NAME)"
 
 # Check disk space (need at least 70GB free for Q8_0)
 AVAILABLE_SPACE_GB=$(df -g "$PROJECT_DIR" 2>/dev/null | awk 'NR==2 {print $4}')
@@ -167,8 +193,9 @@ mkdir -p "$MODELS_DIR"
 print_step "Checking HuggingFace authentication..."
 
 # Check if already logged in
-if $HF_CLI whoami &> /dev/null; then
-    HF_USER=$($HF_CLI whoami 2>/dev/null | head -1)
+if $HF_AUTH_WHOAMI &> /dev/null; then
+    # Extract username, handling both old and new CLI output formats
+    HF_USER=$($HF_AUTH_WHOAMI 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | grep -oE '[a-zA-Z0-9_-]+' | tail -1)
     print_success "Logged in as: $HF_USER"
 else
     print_warning "Not logged in to HuggingFace"
@@ -178,11 +205,11 @@ else
     echo "    1. Create account at https://huggingface.co"
     echo "    2. Accept license at https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct"
     echo "    3. Create access token at https://huggingface.co/settings/tokens"
-    echo "    4. Run: huggingface-cli login"
+    echo "    4. Run: $HF_CLI_NAME auth login (or huggingface-cli login)"
     echo ""
     read -p "Press Enter after completing these steps, or Ctrl+C to cancel..."
-    
-    $HF_CLI login
+
+    $HF_AUTH_LOGIN
 fi
 
 # -----------------------------------------------------------------------------
@@ -338,14 +365,14 @@ echo ""
 # Attempt download based on type with retry logic
 if [[ "$DOWNLOAD_TYPE" == "single" ]]; then
     # Single file download
-    DOWNLOAD_CMD="$HF_CLI download \"$HF_REPO\" \"$MODEL_FILE\" --local-dir \"$MODELS_DIR\" --local-dir-use-symlinks False"
+    DOWNLOAD_CMD="$HF_CLI download \"$HF_REPO\" \"$MODEL_FILE\" --local-dir \"$MODELS_DIR\" ${HF_DOWNLOAD_SYMLINKS_OPT:-}"
     if ! run_with_retry "$DOWNLOAD_CMD"; then
         show_download_error
         exit 1
     fi
 else
     # Sharded download - download all files matching the pattern in the quantization folder
-    DOWNLOAD_CMD="$HF_CLI download \"$HF_REPO\" --include \"${MODEL_QUANT}/*\" --local-dir \"$MODELS_DIR\" --local-dir-use-symlinks False"
+    DOWNLOAD_CMD="$HF_CLI download \"$HF_REPO\" --include \"${MODEL_QUANT}/*\" --local-dir \"$MODELS_DIR\" ${HF_DOWNLOAD_SYMLINKS_OPT:-}"
     if ! run_with_retry "$DOWNLOAD_CMD"; then
         show_download_error
         exit 1

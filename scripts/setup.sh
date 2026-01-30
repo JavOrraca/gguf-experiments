@@ -151,11 +151,17 @@ else
     exit 1
 fi
 
-# Verify huggingface-cli
-if uv run huggingface-cli --help &> /dev/null; then
-    print_success "huggingface-cli installed successfully"
+# Verify HuggingFace CLI (use explicit venv path to avoid system Python conflicts)
+# Note: In huggingface_hub v0.24+, the CLI is 'hf' instead of 'huggingface-cli'
+VENV_HF_CLI="$PROJECT_DIR/.venv/bin/hf"
+if [[ ! -x "$VENV_HF_CLI" ]]; then
+    VENV_HF_CLI="$PROJECT_DIR/.venv/bin/huggingface-cli"
+fi
+if [[ -x "$VENV_HF_CLI" ]] && "$VENV_HF_CLI" --help &> /dev/null; then
+    print_success "HuggingFace CLI installed successfully ($(basename "$VENV_HF_CLI"))"
 else
-    print_error "huggingface-cli installation failed"
+    print_error "HuggingFace CLI installation failed"
+    echo "  Expected at: $PROJECT_DIR/.venv/bin/hf or huggingface-cli"
     exit 1
 fi
 
