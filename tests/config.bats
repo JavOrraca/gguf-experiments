@@ -34,8 +34,13 @@ teardown() {
     [ "$status" -eq 0 ]
 }
 
-@test "config.env.example contains RAM_LIMIT" {
-    run grep -q "RAM_LIMIT" "$PROJECT_ROOT/config.env.example"
+@test "config.env.example contains KV_CACHE_TYPE_K" {
+    run grep -q "KV_CACHE_TYPE_K" "$PROJECT_ROOT/config.env.example"
+    [ "$status" -eq 0 ]
+}
+
+@test "config.env.example contains KV_CACHE_TYPE_V" {
+    run grep -q "KV_CACHE_TYPE_V" "$PROJECT_ROOT/config.env.example"
     [ "$status" -eq 0 ]
 }
 
@@ -80,10 +85,16 @@ teardown() {
     [ "$retries" = "5" ]
 }
 
-@test "default RAM_LIMIT is 12G" {
-    local ram_limit
-    ram_limit=$(grep "^RAM_LIMIT=" "$PROJECT_ROOT/config.env.example" | cut -d'=' -f2)
-    [ "$ram_limit" = "12G" ]
+@test "default KV_CACHE_TYPE_K is q8_0" {
+    local cache_type
+    cache_type=$(grep "^KV_CACHE_TYPE_K=" "$PROJECT_ROOT/config.env.example" | cut -d'=' -f2)
+    [ "$cache_type" = "q8_0" ]
+}
+
+@test "default KV_CACHE_TYPE_V is q8_0" {
+    local cache_type
+    cache_type=$(grep "^KV_CACHE_TYPE_V=" "$PROJECT_ROOT/config.env.example" | cut -d'=' -f2)
+    [ "$cache_type" = "q8_0" ]
 }
 
 @test "default USE_MMAP is true" {
@@ -99,17 +110,20 @@ teardown() {
 }
 
 # =============================================================================
-# RAM_LIMIT format validation
+# KV cache type validation
 # =============================================================================
 
-@test "RAM_LIMIT accepts G suffix" {
-    local RAM_LIMIT="12G"
-    [[ "$RAM_LIMIT" =~ ^[0-9]+G$ ]]
-}
-
-@test "RAM_LIMIT accepts numeric bytes" {
-    local RAM_LIMIT="12884901888"
-    [[ "$RAM_LIMIT" =~ ^[0-9]+$ ]]
+@test "KV_CACHE_TYPE accepts valid quantization types" {
+    local valid_types=("f16" "f32" "q8_0" "q4_0" "q4_1" "q5_0" "q5_1")
+    local KV_CACHE_TYPE_K="q8_0"
+    local found=false
+    for t in "${valid_types[@]}"; do
+        if [ "$KV_CACHE_TYPE_K" = "$t" ]; then
+            found=true
+            break
+        fi
+    done
+    [ "$found" = "true" ]
 }
 
 # =============================================================================

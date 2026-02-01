@@ -23,9 +23,11 @@ This project allows you to run the **Llama 4 Scout 17B-16E** model (or similar l
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
 | **macOS** | 12.0+ | 14.0+ (Sonoma) |
-| **Chip** | Apple M1 | Apple M2/M3/M4 |
+| **Chip** | Any (Intel or Apple Silicon) | Apple M-series (for optional GPU acceleration) |
 | **RAM** | 16GB | 24GB+ |
 | **Disk** | 70GB free (SSD) | 120GB+ free (NVMe) |
+
+> **Note:** This project defaults to CPU-only inference for maximum compatibility. For GPU acceleration on Apple Silicon, set `GPU_LAYERS=999` in `config.env`.
 
 **Automatically installed by `make setup`:**
 - [Homebrew](https://brew.sh) - Package manager for macOS
@@ -116,24 +118,28 @@ nano config.env
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `MODEL_QUANT` | `Q8_0` | Quantization level (Q8_0, Q6_K, Q4_K_M, Q3_K_S, etc.) |
-| `RAM_LIMIT` | `12G` | Max RAM for model (set to ~50% of your total RAM) |
-| `CONTEXT_SIZE` | `4096` | Conversation memory in tokens (lower = faster) |
-| `GPU_LAYERS` | `999` | Layers on Metal GPU (0 for CPU-only) |
+| `CONTEXT_SIZE` | `2048` | Conversation memory in tokens (lower = less memory) |
+| `KV_CACHE_TYPE_K` | `q8_0` | KV cache quantization for keys (q8_0 = 50% less memory) |
+| `KV_CACHE_TYPE_V` | `q8_0` | KV cache quantization for values |
+| `GPU_LAYERS` | `0` | Layers on GPU (0 = CPU-only, 999 = all layers on GPU) |
 | `USE_MMAP` | `true` | **Essential** - memory-maps model for larger-than-RAM operation |
-| `USE_MLOCK` | `false` | **Keep false** - allows OS to swap model pages (see below) |
+| `USE_MLOCK` | `false` | **Keep false** - allows OS to swap model pages |
 | `DOWNLOAD_TIMEOUT` | `3600` | Download timeout in seconds (60 min default) |
 | `DOWNLOAD_MAX_RETRIES` | `5` | Retry attempts for failed downloads |
 
-### Understanding USE_MMAP and USE_MLOCK
+### Understanding Memory Management
 
-These two settings work together to enable larger-than-RAM inference:
+There is **no setting to hard-limit total RAM usage**. The OS manages memory automatically via paging. To reduce memory pressure:
 
-| Setting | What it does | For larger-than-RAM |
-|---------|--------------|---------------------|
-| `USE_MMAP=true` | Memory-maps the model file so the OS loads pages on-demand | **Required** |
-| `USE_MLOCK=false` | Allows OS to swap unused model pages out of RAM | **Required** |
+| Setting | Effect |
+|---------|--------|
+| `USE_MMAP=true` | Memory-maps the model file so the OS loads pages on-demand (**Required**) |
+| `USE_MLOCK=false` | Allows OS to swap unused model pages out of RAM (**Required**) |
+| `CONTEXT_SIZE=2048` | Smaller context = smaller KV cache = less RAM |
+| `KV_CACHE_TYPE_K/V=q8_0` | Quantized KV cache uses 50% less memory than default f16 |
+| `BATCH_SIZE=256` | Smaller batch = less working memory during inference |
 
-If you set `USE_MLOCK=true`, the system tries to lock the entire model in RAM, which will **fail** if the model exceeds your available memory. Keep it `false` for larger-than-RAM operation.
+If you set `USE_MLOCK=true`, the system tries to lock the entire model in RAM, which will **fail** if the model exceeds your available memory.
 
 ---
 

@@ -24,32 +24,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# -----------------------------------------------------------------------------
-# Helper function to convert RAM_LIMIT to MiB for --cache-ram
-# Supports: 12G, 12g, 8192M, 8192m, 8192 (plain number = MiB)
-# -----------------------------------------------------------------------------
-convert_ram_to_mib() {
-    local ram_value="$1"
-    local num unit
-
-    # Extract number and unit
-    if [[ "$ram_value" =~ ^([0-9]+)([GgMm]?)$ ]]; then
-        num="${BASH_REMATCH[1]}"
-        unit="${BASH_REMATCH[2]}"
-
-        case "$unit" in
-            G|g)
-                echo $(( num * 1024 ))
-                ;;
-            M|m|"")
-                echo "$num"
-                ;;
-        esac
-    else
-        # Invalid format, return empty
-        echo ""
-    fi
-}
 
 # Colors for output
 RED='\033[0;31m'
@@ -77,17 +51,18 @@ print_error() {
 # -----------------------------------------------------------------------------
 # Load configuration
 # -----------------------------------------------------------------------------
-# Defaults
+# Defaults (optimized for larger-than-RAM inference)
 MODEL_PATH="$PROJECT_DIR/models/Llama-4-Scout-17B-16E-Instruct-Q8_0.gguf"
-CONTEXT_SIZE=4096
-MAX_TOKENS=2048
+CONTEXT_SIZE=2048
+MAX_TOKENS=1024
 TEMPERATURE=0.7
 THREADS="auto"
-BATCH_SIZE=512
-GPU_LAYERS=999
+BATCH_SIZE=256
+GPU_LAYERS=0
 USE_MMAP=true
 USE_MLOCK=false
-RAM_LIMIT="12G"
+KV_CACHE_TYPE_K="q8_0"
+KV_CACHE_TYPE_V="q8_0"
 SYSTEM_PROMPT="You are a helpful AI assistant. Be concise and accurate."
 REPEAT_PENALTY=1.1
 TOP_K=40
@@ -181,12 +156,13 @@ if [[ "$USE_MLOCK" == "true" ]]; then
     CMD+=(--mlock)
 fi
 
-# RAM limit for KV cache (convert to MiB for --cache-ram)
-if [[ -n "$RAM_LIMIT" ]]; then
-    RAM_LIMIT_MIB=$(convert_ram_to_mib "$RAM_LIMIT")
-    if [[ -n "$RAM_LIMIT_MIB" ]]; then
-        CMD+=(--cache-ram "$RAM_LIMIT_MIB")
-    fi
+# KV cache quantization - reduces memory usage significantly
+# q8_0 = 50% less memory, q4_0 = 75% less memory vs f16 default
+if [[ -n "$KV_CACHE_TYPE_K" ]]; then
+    CMD+=(--cache-type-k "$KV_CACHE_TYPE_K")
+fi
+if [[ -n "$KV_CACHE_TYPE_V" ]]; then
+    CMD+=(--cache-type-v "$KV_CACHE_TYPE_V")
 fi
 
 # Sampling parameters
@@ -219,10 +195,10 @@ echo ""
 echo "Model:       $(basename "$MODEL_PATH")"
 echo "Context:     $CONTEXT_SIZE tokens"
 echo "GPU Layers:  $GPU_LAYERS"
-echo "RAM Limit:   $RAM_LIMIT (cache)"
+echo "KV Cache:    $KV_CACHE_TYPE_K / $KV_CACHE_TYPE_V"
 echo "Memory Map:  $USE_MMAP"
 echo ""
-print_warning "First response may be slow while model loads"
+print_warning "First response may be slow while model pages into RAM"
 print_warning "Type 'quit' or press Ctrl+C to exit"
 echo ""
 echo "------------------------------------------"

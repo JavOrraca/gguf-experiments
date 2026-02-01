@@ -144,7 +144,7 @@ teardown() {
     [ "$HF_REPO" = "test/test-repo" ]
     [ "$MODEL_NAME" = "test-model" ]
     [ "$MODEL_QUANT" = "Q4_K_M" ]
-    [ "$RAM_LIMIT" = "8G" ]
+    [ "$KV_CACHE_TYPE_K" = "q8_0" ]
 }
 
 @test "DOWNLOAD_TIMEOUT can be overridden" {

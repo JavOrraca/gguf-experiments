@@ -247,11 +247,12 @@ CONTEXT_SIZE=2048  # Instead of 4096
 **Problem**: Too much memory pressure causing swap thrashing.
 
 **Solution**:
-1. **Reduce RAM usage** in `config.env`:
+1. **Reduce memory usage** in `config.env`:
 ```bash
-RAM_LIMIT=12G  # Use less RAM
-CONTEXT_SIZE=2048
-BATCH_SIZE=256
+CONTEXT_SIZE=1024        # Smaller context = smaller KV cache
+BATCH_SIZE=128           # Smaller batches use less working memory
+KV_CACHE_TYPE_K=q4_0     # More aggressive quantization (75% less KV memory)
+KV_CACHE_TYPE_V=q4_0
 ```
 
 2. **Monitor memory** in another terminal:
@@ -271,10 +272,13 @@ while true; do vm_stat | grep "Pages free"; sleep 2; done
 # Check if OOM killed the process
 log show --predicate 'eventMessage contains "Killed"' --last 5m
 
-# Reduce memory usage
-GPU_LAYERS=0  # Disable Metal to reduce memory
-CONTEXT_SIZE=1024
-USE_MLOCK=false  # Don't lock memory
+# Reduce memory usage in config.env
+GPU_LAYERS=0           # CPU-only (default)
+CONTEXT_SIZE=1024      # Smaller context
+BATCH_SIZE=128         # Smaller batches
+KV_CACHE_TYPE_K=q4_0   # Aggressive KV quantization
+KV_CACHE_TYPE_V=q4_0
+USE_MLOCK=false        # Don't lock memory (required)
 ```
 
 ---
@@ -334,8 +338,10 @@ make serve
 # Clear conversation by restarting chat
 # Ctrl+C then 'make chat' again
 
-# Or reduce context size
-CONTEXT_SIZE=2048  # Limits conversation history
+# Or reduce context size and use quantized KV cache
+CONTEXT_SIZE=1024        # Limits conversation history
+KV_CACHE_TYPE_K=q8_0     # Quantized cache uses less memory
+KV_CACHE_TYPE_V=q8_0
 ```
 
 ---
@@ -455,8 +461,8 @@ llama-cli --version
 # Check Metal support
 system_profiler SPDisplaysDataType | grep Metal
 
-# Ensure GPU_LAYERS is set
-GPU_LAYERS=999  # In config.env
+# Enable GPU acceleration (default is CPU-only)
+GPU_LAYERS=999  # In config.env (set to 999 for full GPU offload)
 
 # Check llama.cpp Metal support
 llama-cli --help | grep -i metal

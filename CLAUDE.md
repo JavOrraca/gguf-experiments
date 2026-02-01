@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GGUF Experiments is a CLI framework for running large language models (17B+ parameters) that exceed available RAM on macOS using memory-mapped inference. It enables running models like Llama 4 Scout on consumer hardware by memory-mapping model files instead of loading them entirely into RAM.
 
-**Platform:** macOS only (Apple Silicon M1+ recommended)
+**Platform:** macOS only (CPU-only by default; GPU acceleration available on Apple Silicon)
 
 ## Common Commands
 
@@ -54,10 +54,14 @@ Copy `config.env.example` to `config.env`. Critical settings for larger-than-RAM
 
 | Setting | Purpose |
 |---------|---------|
-| `RAM_LIMIT` | Set to ~50% of total RAM (e.g., `12G` for 24GB system) |
 | `USE_MMAP=true` | **Required** - enables memory-mapped inference |
 | `USE_MLOCK=false` | **Required** - allows OS to swap model pages |
+| `KV_CACHE_TYPE_K=q8_0` | Quantized KV cache (50% less memory than default) |
+| `KV_CACHE_TYPE_V=q8_0` | Quantized KV cache for values |
+| `CONTEXT_SIZE=2048` | Smaller context = less KV cache memory |
 | `MODEL_QUANT` | Quantization level (Q8_0, Q6_K, Q4_K_M, etc.) |
+
+**Note:** There is no setting to hard-limit total RAM. The OS manages memory via mmap paging.
 
 ## Testing
 
