@@ -1,4 +1,5 @@
-# GGUF Experiments
+# GGUF Experiments ![Static Badge](https://img.shields.io/badge/broken-failing-red)
+
 
 > **Run Large Language Models that exceed your RAM on macOS**
 
