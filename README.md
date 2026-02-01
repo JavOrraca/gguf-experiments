@@ -58,7 +58,7 @@ make setup
 A prepopulated configuration setup can be found in `config.env.example`. Copy it to create your config:
 ```bash
 cp config.env.example config.env
-nano config.env  # Optionally adjust settings like RAM_LIMIT
+nano config.env  # Optionally adjust settings
 ```
 
 ### 4. Download the model

@@ -223,8 +223,9 @@ echo "  2. Start chatting:    make chat"
 echo "  3. Or start server:   make serve"
 echo ""
 
-# Check available RAM
+# Show available RAM
 TOTAL_RAM_GB=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
-print_warning "Your system has ${TOTAL_RAM_GB}GB RAM"
-echo "  Edit config.env to set RAM_LIMIT (recommended: $(( TOTAL_RAM_GB * 1 / 2 ))G)"
+print_success "Your system has ${TOTAL_RAM_GB}GB RAM"
+echo "  The OS manages memory automatically via mmap paging."
+echo "  To reduce memory pressure, adjust CONTEXT_SIZE or KV_CACHE_TYPE in config.env"
 echo ""

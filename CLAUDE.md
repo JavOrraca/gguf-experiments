@@ -70,3 +70,18 @@ Tests use BATS (Bash Automated Testing System):
 brew install bats-core  # Install test framework
 make test               # Run all tests in tests/*.bats
 ```
+
+## Deprecating Environment Variables
+
+When removing or renaming environment variables, use the checklist in `.claude/skills/env-var-deprecation.md` to ensure complete removal from all locations:
+
+1. Configuration files (`config.env.example`)
+2. All shell scripts (`scripts/*.sh`)
+3. Makefile (`info` target and others)
+4. All documentation (`README.md`, `CLAUDE.md`, `docs/*.md`)
+5. All tests (`tests/*.bats`, `tests/test_helper.bash`)
+
+**Verification:** After removal, run:
+```bash
+grep -r "VAR_NAME" --include="*.sh" --include="*.md" --include="*.bats" --include="Makefile" --include="*.env*" .
+```

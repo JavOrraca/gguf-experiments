@@ -108,9 +108,9 @@ info: ## Show system information and model status
 	@echo "$(BLUE)Configuration$(NC)"
 	@echo "============="
 	@if [ -f "$(CONFIG_FILE)" ]; then \
-		echo "RAM_LIMIT: $$(grep '^RAM_LIMIT=' $(CONFIG_FILE) | cut -d'=' -f2)"; \
 		echo "GPU_LAYERS: $$(grep '^GPU_LAYERS=' $(CONFIG_FILE) | cut -d'=' -f2)"; \
 		echo "CONTEXT_SIZE: $$(grep '^CONTEXT_SIZE=' $(CONFIG_FILE) | cut -d'=' -f2)"; \
+		echo "KV_CACHE_TYPE_K: $$(grep '^KV_CACHE_TYPE_K=' $(CONFIG_FILE) | cut -d'=' -f2)"; \
 	else \
 		echo "No config.env found - using defaults"; \
 	fi

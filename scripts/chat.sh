@@ -88,7 +88,7 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "  --cpu-only     Force CPU-only mode (no GPU/Metal)"
     echo ""
     echo "Configuration is loaded from config.env"
-    echo "Edit config.env to change settings like RAM_LIMIT, CONTEXT_SIZE, etc."
+    echo "Edit config.env to change settings like CONTEXT_SIZE, KV_CACHE_TYPE, etc."
     echo ""
     exit 0
 fi
